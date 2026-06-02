@@ -5,20 +5,97 @@ import os
 import sqlite3
 import uuid
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterable, Optional, Union
 
 from paperseek.config import AgentConfig
 
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:  # Python 3.8 without backports
+    ZoneInfo = None
+
 
 DISABLED_VALUES = {"0", "false", "no", "off"}
 SECRET_KEY_NAMES = {"api_key", "apikey", "authorization", "auth_token", "access_token", "secret", "password"}
 SECRET_KEY_PARTS = ("authorization", "token", "secret", "password")
+DEFAULT_TIMEZONE_NAME = "Asia/Shanghai"
+DEFAULT_UTC_OFFSET_MINUTES = 8 * 60
+
+
+def _parse_utc_offset_minutes(value: Any) -> Optional[int]:
+    if value is None or value == "":
+        return None
+    try:
+        minutes = int(value)
+    except (TypeError, ValueError):
+        return None
+    if minutes < -23 * 60 or minutes > 23 * 60:
+        return None
+    return minutes
+
+
+def _parse_utc_offset_text(value: str) -> Optional[int]:
+    text = str(value or "").strip().upper()
+    if text in ("UTC", "Z", "ETC/UTC"):
+        return 0
+    if text.startswith("UTC"):
+        text = text[3:]
+    if not text:
+        return None
+    sign = 1
+    if text[0] == "+":
+        text = text[1:]
+    elif text[0] == "-":
+        sign = -1
+        text = text[1:]
+    else:
+        return None
+    pieces = text.split(":", 1)
+    try:
+        hours = int(pieces[0])
+        minutes = int(pieces[1]) if len(pieces) == 2 else 0
+    except ValueError:
+        return None
+    if hours < 0 or minutes < 0 or hours > 23 or minutes > 59:
+        return None
+    return sign * (hours * 60 + minutes)
+
+
+def _fixed_timezone(minutes: int) -> timezone:
+    return timezone(timedelta(minutes=minutes))
+
+
+def _history_timezone(timezone_name: Optional[str] = None, utc_offset_minutes: Any = None):
+    configured_name = (timezone_name or os.environ.get("PAPERSEEK_TIMEZONE", "") or "").strip()
+    if configured_name and ZoneInfo is not None:
+        try:
+            return ZoneInfo(configured_name)
+        except Exception:
+            pass
+
+    if configured_name in (DEFAULT_TIMEZONE_NAME, "Asia/Chongqing", "Asia/Harbin", "PRC"):
+        return _fixed_timezone(DEFAULT_UTC_OFFSET_MINUTES)
+
+    parsed_text = _parse_utc_offset_text(configured_name)
+    if parsed_text is not None:
+        return _fixed_timezone(parsed_text)
+
+    parsed_minutes = _parse_utc_offset_minutes(utc_offset_minutes)
+    if parsed_minutes is not None:
+        return _fixed_timezone(parsed_minutes)
+
+    return _fixed_timezone(DEFAULT_UTC_OFFSET_MINUTES)
+
+
+def history_now(timezone_name: Optional[str] = None, utc_offset_minutes: Any = None) -> str:
+    return datetime.now(_history_timezone(timezone_name, utc_offset_minutes)).isoformat(timespec="seconds")
 
 
 def utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    """Backward-compatible name for persisted history timestamps."""
+    return history_now()
 
 
 def history_enabled() -> bool:
@@ -146,9 +223,17 @@ def _authors_from_paper(paper: dict[str, Any]) -> list[str]:
 
 
 class HistoryStore:
-    def __init__(self, db_path: Optional[Union[Path, str]] = None, enabled: Optional[bool] = None):
+    def __init__(
+        self,
+        db_path: Optional[Union[Path, str]] = None,
+        enabled: Optional[bool] = None,
+        timezone_name: Optional[str] = None,
+        utc_offset_minutes: Any = None,
+    ):
         self.db_path = Path(db_path).expanduser() if db_path is not None else history_db_path()
         self._enabled = history_enabled() if enabled is None else enabled
+        self._timezone_name = timezone_name
+        self._utc_offset_minutes = utc_offset_minutes
         self._schema_ready = False
 
     @property
@@ -160,6 +245,9 @@ class HistoryStore:
             "enabled": self.enabled,
             "path": str(self.db_path),
         }
+
+    def _now(self) -> str:
+        return history_now(self._timezone_name, self._utc_offset_minutes)
 
     def _connect(self) -> sqlite3.Connection:
         if not self.enabled:
@@ -255,7 +343,7 @@ class HistoryStore:
         if not self.enabled:
             return ""
         run_id = f"run_{uuid.uuid4().hex[:12]}"
-        now = utc_now()
+        now = self._now()
         try:
             with self._connection() as conn:
                 conn.execute(
@@ -289,7 +377,7 @@ class HistoryStore:
                         str(safe_event.get("status", "")),
                         str(safe_event.get("message", "")),
                         _json_dumps(safe_event),
-                        utc_now(),
+                        self._now(),
                     ),
                 )
         except Exception:
@@ -320,7 +408,7 @@ class HistoryStore:
                         "success",
                         _json_dumps(safe_payload.get("history") or []),
                         _json_dumps(safe_payload.get("citation_map") or {}),
-                        utc_now(),
+                        self._now(),
                         run_id,
                     ),
                 )
@@ -339,7 +427,7 @@ class HistoryStore:
                     SET status = ?, error_message = ?, finished_at = ?
                     WHERE id = ?
                     """,
-                    ("error", str(error_message or ""), utc_now(), run_id),
+                    ("error", str(error_message or ""), self._now(), run_id),
                 )
         except Exception:
             return

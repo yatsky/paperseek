@@ -458,6 +458,7 @@ Web UI 运行时：
 | `CITATION_PER_SEED` | `4` | 每个 seed 的引用邻居数量。 |
 | `CITATION_MAX_RECORDS` | `40` | 引用扩展加入候选池的最大记录数。 |
 | `PAPERSEEK_HISTORY_ENABLED` | `true` | 是否启用本地 SQLite 历史记录。 |
+| `PAPERSEEK_TIMEZONE` | `Asia/Shanghai` | 本地历史记录时间戳时区；Web UI 会优先使用浏览器检测到的时区，检测失败时默认东八区。 |
 | `PAPERSEEK_DATA_DIR` | `~/.paperseek` | 本地数据目录。 |
 | `PAPERSEEK_HISTORY_DB` | `~/.paperseek/paperseek.db` | 本地历史数据库路径。 |
 
@@ -1339,6 +1340,7 @@ Web UI 导出 CSV 时包含 UTF-8 BOM，便于 Excel 识别非英文字符。字
 
 - 若要人工筛选，先在 Results 页面勾选，再导出。
 - 若要交给 LLM 继续阅读，建议保留摘要、DOI、record_url 和 reasoning 字段。
+- 导出文件名使用研究问题主题和当前日期，例如 `open-innovation-20260603-1530-papers.csv`。
 - 如果 Excel 打开仍显示乱码，使用“数据 -> 从文本/CSV”并选择 UTF-8。
 
 ### 日志导出

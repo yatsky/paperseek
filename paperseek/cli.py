@@ -120,6 +120,7 @@ Environment variables:
   SEARCH_FIELD       Default discipline/field constraint
   EXPAND_CITATIONS   Set to "false" to skip OpenAlex citation expansion
   FETCH_ABSTRACTS    Set to "true" to enable DOI-based abstract fetching
+  PAPERSEEK_TIMEZONE History timestamp timezone, default: Asia/Shanghai
   PAPERSEEK_HISTORY_ENABLED
                       Set to "false" to disable local SQLite search history
         """,
