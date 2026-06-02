@@ -9,16 +9,36 @@ skills/
 ├── README.md
 └── paperseek/
     ├── SKILL.md
-    └── references/
-        ├── cli-contract.md
-        ├── management-layer.md
-        └── source-routing.md
+    ├── references/
+    │   ├── cli-contract.md
+    │   ├── management-layer.md
+    │   └── source-routing.md
+    └── scripts/
+        └── paperseek.py
 ```
 
 `skills/paperseek/` 是真正的 Skill 文件夹。它采用 progressive disclosure：
 
 - `SKILL.md`：短指令、触发条件、核心工作流。
 - `references/`：只有在需要时才读取的命令契约、数据源选择和诊断说明。
+- `scripts/paperseek.py`：Skill 可调用的启动器，负责定位并调用完整 PaperSeek CLI。
+
+对应到仓库根目录时，Skill 依赖的完整 PaperSeek 项目结构包括：
+
+```text
+.
+├── paperseek/              # Python 包源码，包含 CLI、Web API、数据源适配器和前端静态文件
+├── api/index.py            # Vercel Python 入口
+├── docs/                   # 用户手册、部署指南和截图
+├── tests/                  # 单元测试
+├── Dockerfile              # Docker / ModelScope Studio 部署
+├── docker-compose.yml      # 本地 Docker Compose
+├── vercel.json             # Vercel Python Function 配置
+├── pyproject.toml          # Python 包元数据
+└── skills/                 # Agent Skill，可单独复制发布
+```
+
+单独发布 Skill 时，只复制 `skills/paperseek/` 即可；但它不是完整应用包，仍需要目标环境能安装或找到 PaperSeek Python 包。
 
 ## 用途
 

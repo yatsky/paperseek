@@ -385,6 +385,15 @@ Contributions are welcome:
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) before contributing. Report security issues according to [SECURITY.md](SECURITY.md).
 
+## Acknowledgements
+
+PaperSeek takes inspiration from the following open-source projects:
+
+- [dr-dumpling/paper-search-cli](https://github.com/dr-dumpling/paper-search-cli/): CLI usage patterns and literature-search workflow design.
+- [666ghj/MiroFish](https://github.com/666ghj/MiroFish): split-pane Web UI layout and workflow presentation style.
+- [clarivate/wosstarter_python_client](https://github.com/clarivate/wosstarter_python_client): Web of Science Starter API client usage.
+- [Lloyd-Jahn/openclaw-paper-search](https://github.com/Lloyd-Jahn/openclaw-paper-search): organization of paper-search tooling.
+
 ## License
 
 PaperSeek is licensed under the [Apache License 2.0](LICENSE).

@@ -1,7 +1,11 @@
 import json
+from pathlib import Path
 import subprocess
 import sys
 import unittest
+
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 class SkillLauncherTest(unittest.TestCase):
@@ -28,6 +32,14 @@ class SkillLauncherTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("PaperSeek package installation", result.stdout)
         self.assertIn("python -m pip install -e .", result.stdout)
+
+    def test_skill_readme_documents_current_layout(self):
+        readme = (ROOT / "skills" / "README.md").read_text(encoding="utf-8")
+        self.assertIn("scripts/", readme)
+        self.assertIn("paperseek.py", readme)
+        self.assertIn("api/index.py", readme)
+        self.assertIn("vercel.json", readme)
+        self.assertIn("Dockerfile", readme)
 
 
 if __name__ == "__main__":

@@ -36,6 +36,19 @@ class PackagingTest(unittest.TestCase):
         self.assertIn("Docker, Vercel, and ModelScope", readme)
         self.assertIn("PaperSeek is licensed under the [Apache License 2.0](LICENSE).", readme)
 
+    def test_readmes_acknowledge_reference_projects(self):
+        expected_links = (
+            "https://github.com/dr-dumpling/paper-search-cli/",
+            "https://github.com/666ghj/MiroFish",
+            "https://github.com/clarivate/wosstarter_python_client",
+            "https://github.com/Lloyd-Jahn/openclaw-paper-search",
+        )
+        zh_readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        en_readme = (ROOT / "README.en.md").read_text(encoding="utf-8")
+        for link in expected_links:
+            self.assertIn(link, zh_readme)
+            self.assertIn(link, en_readme)
+
     def test_user_manual_exists_and_covers_main_user_workflows(self):
         manual = (ROOT / "docs" / "user-manual.md").read_text(encoding="utf-8")
         for heading in (
