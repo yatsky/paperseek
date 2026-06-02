@@ -13,7 +13,7 @@
 
 完整使用说明见 [PaperSeek 用户手册](docs/user-manual.md)。
 部署说明见 [Docker、Vercel 与 ModelScope 部署指南](docs/deployment.md)。
-在线体验见 [ModelScope Studio](https://www.modelscope.cn/studios/HongMingfeng/paperseek)。
+在线体验：[https://www.paperseek.xyz/](https://www.paperseek.xyz/)；或使用 [魔搭创空间](https://modelscope.cn/studios/HongMingfeng/paperseek)（中国大陆直接访问）。
 
 ## 概览
 

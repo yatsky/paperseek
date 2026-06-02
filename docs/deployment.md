@@ -100,11 +100,14 @@ Keep the service behind HTTPS when exposed publicly. The Web UI accepts API keys
 
 ModelScope Studio can host the full PaperSeek Web UI through Docker. The repository includes `ms_deploy.json` with:
 
-Current public demo:
+Current public demos:
 
 ```text
-https://www.modelscope.cn/studios/HongMingfeng/paperseek
+https://www.paperseek.xyz/
+https://modelscope.cn/studios/HongMingfeng/paperseek
 ```
+
+Use the ModelScope Studio link for direct access from mainland China.
 
 | Field | Value |
 | --- | --- |

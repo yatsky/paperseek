@@ -11,7 +11,9 @@ class PackagingTest(unittest.TestCase):
         pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
         self.assertIn('name = "paperseek"', pyproject)
         self.assertIn('version = "0.1.0"', pyproject)
-        self.assertIn('Homepage = "https://paperseek.top"', pyproject)
+        self.assertIn('Homepage = "https://www.paperseek.xyz/"', pyproject)
+        self.assertIn('Online-Demo = "https://www.paperseek.xyz/"', pyproject)
+        self.assertIn('ModelScope-Studio = "https://modelscope.cn/studios/HongMingfeng/paperseek"', pyproject)
         self.assertIn('Repository = "https://github.com/MingfengHong/paperseek"', pyproject)
         self.assertNotRegex(pyproject, re.compile(r"^wos-search\s*=", re.MULTILINE))
         self.assertNotRegex(pyproject, re.compile(r"^wos-search-web\s*=", re.MULTILINE))
@@ -25,6 +27,8 @@ class PackagingTest(unittest.TestCase):
         self.assertIn("docs/user-manual.md", readme)
         self.assertIn("docs/deployment.md", readme)
         self.assertIn("[English](README.en.md)", readme)
+        self.assertIn("https://www.paperseek.xyz/", readme)
+        self.assertIn("https://modelscope.cn/studios/HongMingfeng/paperseek", readme)
         self.assertNotIn("img.shields.io/badge/OpenAlex", readme)
         self.assertNotIn("img.shields.io/badge/Crossref", readme)
 
@@ -34,6 +38,8 @@ class PackagingTest(unittest.TestCase):
         self.assertIn("https://github.com/MingfengHong/paperseek", readme)
         self.assertIn("docs/assets/paperseek-web.png", readme)
         self.assertIn("Docker, Vercel, and ModelScope", readme)
+        self.assertIn("https://www.paperseek.xyz/", readme)
+        self.assertIn("https://modelscope.cn/studios/HongMingfeng/paperseek", readme)
         self.assertIn("PaperSeek is licensed under the [Apache License 2.0](LICENSE).", readme)
 
     def test_readmes_acknowledge_reference_projects(self):

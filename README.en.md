@@ -13,7 +13,7 @@
 
 Full Chinese user manual: [PaperSeek User Manual](docs/user-manual.md).
 Deployment guide: [Docker, Vercel, and ModelScope deployment](docs/deployment.md).
-Live demo: [ModelScope Studio](https://www.modelscope.cn/studios/HongMingfeng/paperseek).
+Live demo: [https://www.paperseek.xyz/](https://www.paperseek.xyz/). Mainland China access: [ModelScope Studio](https://modelscope.cn/studios/HongMingfeng/paperseek).
 
 ## Overview
 
