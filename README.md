@@ -168,6 +168,8 @@ PaperSeek 的网页界面分为四个工作区：
 
 Web UI 中填写的 API Key、Base URL 和参数只用于当前浏览器会话，不写入本地配置文件。历史记录会保存运行参数摘要、检索式、日志事件和结果，但不会保存任何 API Key。
 
+Results 导出的 CSV 文件名使用研究问题主题和本地日期，便于区分多次运行。
+
 ## CLI 用法
 
 基本检索：
@@ -320,6 +322,7 @@ A -> B  表示 A 引用了 B
 | `CITATION_PER_SEED` | 每个 seed 抓取的引用邻居数量。 |
 | `CITATION_MAX_RECORDS` | 引用扩展候选上限。 |
 | `PAPERSEEK_HISTORY_ENABLED` | 是否启用本地历史记录，默认 `true`。 |
+| `PAPERSEEK_TIMEZONE` | 本地历史记录时间戳时区，默认 `Asia/Shanghai`；Web UI 会优先使用浏览器检测到的时区。 |
 | `PAPERSEEK_DATA_DIR` | 本地数据目录，默认 `~/.paperseek`。 |
 | `PAPERSEEK_HISTORY_DB` | 本地历史 SQLite 数据库路径，默认 `~/.paperseek/paperseek.db`。 |
 

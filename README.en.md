@@ -168,6 +168,8 @@ The Web UI has four main workspaces:
 
 API keys, base URLs, and run parameters entered in the Web UI are used only for the current browser session and are not written to local config files by PaperSeek. Local history saves run summaries, queries, events, and results, but never raw API keys.
 
+CSV files exported from Results use the research-question theme and local date in the filename.
+
 ## CLI Usage
 
 Basic search:
@@ -320,6 +322,7 @@ Graph nodes come from final results and OpenAlex citation expansion records. You
 | `CITATION_PER_SEED` | Number of citation neighbors fetched per seed. |
 | `CITATION_MAX_RECORDS` | Candidate cap for citation expansion. |
 | `PAPERSEEK_HISTORY_ENABLED` | Enable local history; default `true`. |
+| `PAPERSEEK_TIMEZONE` | Timezone for local history timestamps; default `Asia/Shanghai`. The Web UI prefers the detected browser timezone. |
 | `PAPERSEEK_DATA_DIR` | Local PaperSeek data directory; default `~/.paperseek`. |
 | `PAPERSEEK_HISTORY_DB` | Local history SQLite path; default `~/.paperseek/paperseek.db`. |
 

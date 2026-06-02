@@ -78,6 +78,31 @@ class HistoryStoreTest(unittest.TestCase):
             self.assertTrue(store.delete_run(run_id))
             self.assertEqual(store.list_runs(), [])
 
+    def test_store_defaults_to_shanghai_timezone_for_timestamps(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store = HistoryStore(db_path=Path(tmp) / "paperseek.db", enabled=True)
+            run_id = store.create_run("open innovation", {"data_source": "openalex"})
+
+            detail = store.get_run(run_id)
+
+            self.assertIsNotNone(detail)
+            self.assertIn("+08:00", detail["created_at"])
+
+    def test_store_uses_client_timezone_offset_when_zone_name_is_unavailable(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store = HistoryStore(
+                db_path=Path(tmp) / "paperseek.db",
+                enabled=True,
+                timezone_name="Unsupported/Zone",
+                utc_offset_minutes=-300,
+            )
+            run_id = store.create_run("open innovation", {"data_source": "openalex"})
+
+            detail = store.get_run(run_id)
+
+            self.assertIsNotNone(detail)
+            self.assertIn("-05:00", detail["created_at"])
+
 
 class HistoryApiTest(unittest.TestCase):
     def test_history_endpoint_reads_configured_local_database(self):

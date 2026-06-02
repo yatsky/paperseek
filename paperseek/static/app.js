@@ -61,8 +61,62 @@ let historyStatus = { enabled: true, path: "" };
 let historyLoading = false;
 let historyError = "";
 
+const fallbackTimeZone = "Asia/Shanghai";
+const clientTimeZone = detectClientTimeZone();
+
+function detectClientTimeZone() {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || fallbackTimeZone;
+  } catch (_) {
+    return fallbackTimeZone;
+  }
+}
+
+function clientUtcOffsetMinutes() {
+  if (clientTimeZone === fallbackTimeZone) {
+    return 8 * 60;
+  }
+  try {
+    return -new Date().getTimezoneOffset();
+  } catch (_) {
+    return 8 * 60;
+  }
+}
+
+function zonedDateParts(date = new Date()) {
+  try {
+    const parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone: clientTimeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    }).formatToParts(date);
+    return Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  } catch (_) {
+    const fallback = new Date(date.getTime() + 8 * 60 * 60 * 1000);
+    return {
+      year: String(fallback.getUTCFullYear()),
+      month: String(fallback.getUTCMonth() + 1).padStart(2, "0"),
+      day: String(fallback.getUTCDate()).padStart(2, "0"),
+      hour: String(fallback.getUTCHours()).padStart(2, "0"),
+      minute: String(fallback.getUTCMinutes()).padStart(2, "0"),
+      second: String(fallback.getUTCSeconds()).padStart(2, "0"),
+    };
+  }
+}
+
 function nowStamp() {
-  return new Date().toLocaleTimeString("en-GB", { hour12: false });
+  const parts = zonedDateParts();
+  return `${parts.hour}:${parts.minute}:${parts.second}`;
+}
+
+function dateStamp() {
+  const parts = zonedDateParts();
+  return `${parts.year}${parts.month}${parts.day}-${parts.hour}${parts.minute}`;
 }
 
 function log(message) {
@@ -182,12 +236,27 @@ function updateExportButtons() {
   }
 }
 
-function slugPart(value) {
-  return String(value || "literature-search")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 48) || "literature-search";
+function filenamePart(value, fallback = "literature-search") {
+  const text = String(value || fallback);
+  const raw = (typeof text.normalize === "function" ? text.normalize("NFKC") : text).trim();
+  let cleaned = "";
+  try {
+    const nonWord = new RegExp("[^\\p{L}\\p{N}]+", "gu");
+    cleaned = raw.replace(nonWord, "-").replace(/^-+|-+$/g, "");
+  } catch (_) {
+    cleaned = raw
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+  }
+  return cleaned.slice(0, 64) || fallback;
+}
+
+function exportQuestionTheme() {
+  return (latestPayload && latestPayload.question) ||
+    (latestResult && latestResult.question) ||
+    getValue("question") ||
+    "literature-search";
 }
 
 function downloadText(filename, content, type) {
@@ -1310,6 +1379,8 @@ function buildPayload() {
     llm_base_url: getValue("llmBaseUrl"),
     wos_db: getValue("wosDb") || "WOS",
     search_field: getValue("searchField"),
+    client_timezone: clientTimeZone,
+    client_utc_offset_minutes: clientUtcOffsetMinutes(),
     target_min: getNumber("targetMin"),
     target_max: getNumber("targetMax"),
     max_iterations: getNumber("maxIterations"),
@@ -1555,14 +1626,12 @@ workflow.addEventListener("input", (event) => {
 });
 
 exportLogButton.addEventListener("click", () => {
-  const source = latestPayload && latestPayload.data_source ? latestPayload.data_source : "source";
-  const filename = `${slugPart(runId.textContent)}-${slugPart(source)}-system-log.txt`;
+  const filename = `${filenamePart(exportQuestionTheme())}-${dateStamp()}-system-log.txt`;
   downloadText(filename, currentLogText(), "text/plain;charset=utf-8");
 });
 
 exportCsvButton.addEventListener("click", () => {
-  const source = latestResult && latestResult.source ? latestResult.source : "source";
-  const filename = `${slugPart(runId.textContent)}-${slugPart(source)}-papers.csv`;
+  const filename = `${filenamePart(exportQuestionTheme())}-${dateStamp()}-papers.csv`;
   downloadText(filename, papersToCsv(getExportPapers()), "text/csv;charset=utf-8");
 });
 

@@ -58,6 +58,8 @@ class SearchRequest(BaseModel):
     llm_base_url: Optional[str] = None
     wos_db: str = "WOS"
     search_field: Optional[str] = ""
+    client_timezone: Optional[str] = ""
+    client_utc_offset_minutes: Optional[int] = None
     fetch_abstracts: bool = False
     expand_citations: bool = True
     target_min: int = Field(default=5, ge=0, le=50)
@@ -105,6 +107,8 @@ class DiagnosticRequest(BaseModel):
     llm_base_url: Optional[str] = None
     wos_db: str = "WOS"
     search_field: Optional[str] = ""
+    client_timezone: Optional[str] = ""
+    client_utc_offset_minutes: Optional[int] = None
     fetch_abstracts: bool = False
     expand_citations: bool = True
     target_min: int = Field(default=5, ge=0, le=50)
@@ -241,6 +245,13 @@ def _config_from_payload(payload: SearchRequest) -> AgentConfig:
     return config
 
 
+def _history_store_from_payload(payload) -> HistoryStore:
+    return HistoryStore(
+        timezone_name=getattr(payload, "client_timezone", "") or None,
+        utc_offset_minutes=getattr(payload, "client_utc_offset_minutes", None),
+    )
+
+
 @app.post("/api/diagnostics")
 def diagnostics(payload: DiagnosticRequest):
     config = _config_from_payload(payload)
@@ -305,7 +316,7 @@ def history_clear(confirm: bool = Query(default=False)):
 def search(payload: SearchRequest):
     _validate_payload(payload)
     config = _config_from_payload(payload)
-    store = HistoryStore()
+    store = _history_store_from_payload(payload)
     run_id = store.create_run(payload.question, safe_search_params_from_config(config))
 
     try:
@@ -348,7 +359,7 @@ def search_stream(payload: SearchRequest):
 
     def generator():
         events: Queue = Queue()
-        store = HistoryStore()
+        store = _history_store_from_payload(payload)
         run_id = ""
 
         def send(event: dict):
