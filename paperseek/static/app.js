@@ -28,6 +28,7 @@ const providerDefaults = {
   volcengine: { model: "doubao-seed-2-0-mini-260428", apiType: "openai_chat", baseUrl: "https://ark.cn-beijing.volces.com/api/v3" },
   hunyuan: { model: "hunyuan-turbos-latest", apiType: "openai_chat", baseUrl: "https://tokenhub.tencentmaas.com/v1" },
   qianfan: { model: "ernie-5.0", apiType: "openai_chat", baseUrl: "https://qianfan.baidubce.com/v2" },
+  modelscope: { model: "Qwen/Qwen3-235B-A22B-Instruct-2507", apiType: "openai_chat", baseUrl: "https://api-inference.modelscope.cn/v1" },
   ollama: { model: "qwen3:8b", apiType: "openai_chat", baseUrl: "http://127.0.0.1:11434/v1" },
   custom: { model: "", apiType: "openai_chat", baseUrl: "" },
 };

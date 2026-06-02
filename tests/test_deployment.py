@@ -22,16 +22,24 @@ class DeploymentTest(unittest.TestCase):
 
     def test_dockerfile_runs_web_app_on_container_port(self):
         dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
-        self.assertIn("EXPOSE 8765", dockerfile)
-        self.assertIn('"0.0.0.0"', dockerfile)
-        self.assertIn('"8765"', dockerfile)
+        self.assertIn("EXPOSE 7860", dockerfile)
+        self.assertIn("PORT=7860", dockerfile)
+        self.assertIn("--host 0.0.0.0", dockerfile)
+        self.assertIn("${PORT:-7860}", dockerfile)
         self.assertIn("HEALTHCHECK", dockerfile)
 
     def test_compose_exposes_configurable_host_port(self):
         compose = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
-        self.assertIn("${PAPERSEEK_PORT:-8765}:8765", compose)
+        self.assertIn("${PAPERSEEK_PORT:-8765}:${PAPERSEEK_CONTAINER_PORT:-7860}", compose)
+        self.assertIn("PORT: ${PAPERSEEK_CONTAINER_PORT:-7860}", compose)
         self.assertIn("LLM_PROVIDER", compose)
         self.assertIn("OPENALEX_API_KEY", compose)
+
+    def test_modelscope_deploy_config_uses_docker_port(self):
+        config = json.loads((ROOT / "ms_deploy.json").read_text(encoding="utf-8"))
+        self.assertEqual(config["sdk_type"], "docker")
+        self.assertEqual(config["port"], 7860)
+        self.assertEqual(config["resource_configuration"], "platform/2v-cpu-16g-mem")
 
 
 if __name__ == "__main__":

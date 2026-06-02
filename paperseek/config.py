@@ -89,6 +89,7 @@ SUPPORTED_LLM_PROVIDERS = (
     "volcengine",
     "hunyuan",
     "qianfan",
+    "modelscope",
     "ollama",
     "custom",
 )
@@ -120,6 +121,7 @@ def default_model(provider: str) -> str:
         "volcengine": "doubao-seed-2-0-mini-260428",
         "hunyuan": "hunyuan-turbos-latest",
         "qianfan": "ernie-5.0",
+        "modelscope": "Qwen/Qwen3-235B-A22B-Instruct-2507",
         "ollama": "qwen3:8b",
         "custom": "",
     }
@@ -142,6 +144,7 @@ def default_base_url(provider: str, api_type: str = "") -> str:
         "volcengine": "https://ark.cn-beijing.volces.com/api/v3",
         "hunyuan": "https://tokenhub.tencentmaas.com/v1",
         "qianfan": "https://qianfan.baidubce.com/v2",
+        "modelscope": "https://api-inference.modelscope.cn/v1",
         "ollama": "http://127.0.0.1:11434/v1",
         "custom": "",
     }

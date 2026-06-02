@@ -51,6 +51,7 @@ Homepage = "https://paperseek.top"
 Repository = "https://github.com/MingfengHong/paperseek"
 Issues = "https://github.com/MingfengHong/paperseek/issues"
 Documentation = "https://github.com/MingfengHong/paperseek#readme"
+Online-Demo = "https://www.modelscope.cn/studios/HongMingfeng/paperseek"
 
 [project.scripts]
 paperseek = "paperseek.cli:main"

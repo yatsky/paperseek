@@ -84,6 +84,16 @@ $env:LLM_BASE_URL = "https://api.deepseek.com"
 $env:LLM_API_KEY = "your-llm-api-key"
 ```
 
+ModelScope API-Inference 也使用 OpenAI Chat Completions 兼容接口：
+
+```bash
+export LLM_PROVIDER=modelscope
+export LLM_API_TYPE=openai_chat
+export LLM_MODEL=Qwen/Qwen3-235B-A22B-Instruct-2507
+export LLM_BASE_URL=https://api-inference.modelscope.cn/v1
+export LLM_API_KEY=your-modelscope-token
+```
+
 启动：
 
 ```bash
@@ -249,7 +259,7 @@ python -m pip uninstall paperseek
 
 ## Deployment
 
-PaperSeek 支持 Docker 和 Vercel 部署。完整步骤见 [Docker 与 Vercel 部署指南](deployment.md)。
+PaperSeek 支持 Docker、ModelScope Studio 和 Vercel 部署。完整步骤见 [部署指南](deployment.md)。
 
 ### Docker 部署
 
@@ -316,6 +326,12 @@ curl https://your-project.vercel.app/api/sources
 
 确认 API 是否返回数据源列表。
 
+### ModelScope Studio 部署
+
+ModelScope Studio 适合把完整 Web UI 发布成在线体验地址。PaperSeek 仓库包含 `ms_deploy.json`，声明 Docker 创空间所需的 `sdk_type=docker`、`port=7860` 和免费 CPU 资源配置。部署时不要把 LLM Key、ModelScope Token 或数据源 Key 写入仓库；需要共享默认配置时，在 Studio 环境变量里配置。
+
+更多步骤见 [部署指南](deployment.md)。
+
 ## Core concepts
 
 ### Research Question
@@ -348,7 +364,7 @@ Data Source 是论文元数据来源。当前支持：
 
 PaperSeek 将 LLM 配置拆成三个部分：
 
-- `LLM_PROVIDER`：服务商，例如 `openai`、`deepseek`、`anthropic`、`ollama`。
+- `LLM_PROVIDER`：服务商，例如 `openai`、`deepseek`、`anthropic`、`modelscope`、`ollama`。
 - `LLM_API_TYPE`：接口协议，例如 `openai_chat`、`openai_responses`、`anthropic_messages`。
 - `LLM_MODEL`：模型名称，例如 `deepseek-v4-flash`、`gpt-5.4-mini`。
 
@@ -562,6 +578,16 @@ export LLM_BASE_URL=https://api.anthropic.com
 export LLM_API_KEY=your-key
 ```
 
+ModelScope API-Inference：
+
+```bash
+export LLM_PROVIDER=modelscope
+export LLM_API_TYPE=openai_chat
+export LLM_MODEL=Qwen/Qwen3-235B-A22B-Instruct-2507
+export LLM_BASE_URL=https://api-inference.modelscope.cn/v1
+export LLM_API_KEY=your-modelscope-token
+```
+
 本地 Ollama：
 
 ```bash
@@ -623,6 +649,7 @@ Provider 默认模型和 Base URL：
 | `volcengine` | `openai_chat` | `doubao-seed-2-0-mini-260428` | `https://ark.cn-beijing.volces.com/api/v3` |
 | `hunyuan` | `openai_chat` | `hunyuan-turbos-latest` | `https://tokenhub.tencentmaas.com/v1` |
 | `qianfan` | `openai_chat` | `ernie-5.0` | `https://qianfan.baidubce.com/v2` |
+| `modelscope` | `openai_chat` | `Qwen/Qwen3-235B-A22B-Instruct-2507` | `https://api-inference.modelscope.cn/v1` |
 | `ollama` | `openai_chat` | `qwen3:8b` | `http://127.0.0.1:11434/v1` |
 | `custom` | `openai_chat` | 空 | 空 |
 
