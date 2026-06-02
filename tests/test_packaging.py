@@ -70,6 +70,7 @@ class PackagingTest(unittest.TestCase):
             "Dockerfile",
             ".dockerignore",
             "docker-compose.yml",
+            "app.py",
             "api/index.py",
             "vercel.json",
             "docs/deployment.md",

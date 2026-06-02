@@ -314,8 +314,9 @@ Vercel 部署所需文件：
 
 | 文件 | 说明 |
 | --- | --- |
-| `api/index.py` | Vercel Python 入口，暴露 FastAPI `app`，部署后由 `/api` 路由访问。 |
-| `vercel.json` | 使用 `api/**/*.py` 匹配 Python 函数，重写路由到 `/api`，并设置函数时长。 |
+| `app.py` | Vercel FastAPI 自动识别入口，暴露 `paperseek.web_app.app`。 |
+| `api/index.py` | 兼容 Python 入口，也暴露同一个 FastAPI `app`。 |
+| `vercel.json` | 最小 Vercel 项目配置，避免使用 `functions` pattern 触发函数匹配失败。 |
 | `requirements.txt` | Python 依赖。 |
 
 部署后可以用：

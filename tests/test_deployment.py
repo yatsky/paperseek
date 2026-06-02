@@ -8,12 +8,17 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class DeploymentTest(unittest.TestCase):
-    def test_vercel_config_routes_to_fastapi_entrypoint(self):
+    def test_vercel_config_uses_fastapi_auto_detection(self):
         config = json.loads((ROOT / "vercel.json").read_text(encoding="utf-8"))
-        self.assertIn("api/**/*.py", config["functions"])
-        self.assertEqual(config["functions"]["api/**/*.py"]["maxDuration"], 300)
-        self.assertIn("excludeFiles", config["functions"]["api/**/*.py"])
-        self.assertEqual(config["rewrites"][0]["destination"], "/api")
+        self.assertEqual(config["$schema"], "https://openapi.vercel.sh/vercel.json")
+        self.assertNotIn("functions", config)
+        self.assertNotIn("rewrites", config)
+
+    def test_vercel_root_app_exposes_fastapi_app(self):
+        spec = importlib.util.spec_from_file_location("paperseek_vercel_root_app", ROOT / "app.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        self.assertEqual(module.app.title, "PaperSeek")
 
     def test_vercel_entrypoint_exposes_fastapi_app(self):
         spec = importlib.util.spec_from_file_location("paperseek_vercel_entrypoint", ROOT / "api" / "index.py")
