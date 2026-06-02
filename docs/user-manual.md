@@ -314,8 +314,8 @@ Vercel 部署所需文件：
 
 | 文件 | 说明 |
 | --- | --- |
-| `api/index.py` | Vercel Python 入口。 |
-| `vercel.json` | 路由重写和函数时长设置。 |
+| `api/index.py` | Vercel Python 入口，暴露 FastAPI `app`，部署后由 `/api` 路由访问。 |
+| `vercel.json` | 使用 `api/**/*.py` 匹配 Python 函数，重写路由到 `/api`，并设置函数时长。 |
 | `requirements.txt` | Python 依赖。 |
 
 部署后可以用：

@@ -172,7 +172,7 @@ Typical Vercel caveats:
 - Serverless functions are not designed for persistent background workers.
 - Vercel deployment logs and function logs are separate from PaperSeek's in-app System Dashboard.
 
-The included `vercel.json` sets `maxDuration` to `300` seconds for `api/index.py`. Your actual limit depends on your Vercel plan and project settings.
+The included `vercel.json` applies `maxDuration=300` to Python functions with the `api/**/*.py` glob and rewrites app traffic to `/api`, which is served by `api/index.py`. Your actual limit depends on your Vercel plan and project settings.
 
 ### Deploy from GitHub
 
@@ -230,8 +230,8 @@ PaperSeek includes:
 
 | File | Purpose |
 | --- | --- |
-| `api/index.py` | Vercel Python entrypoint that exposes `paperseek.web_app.app`. |
-| `vercel.json` | Rewrites all routes to the FastAPI app and sets function max duration. |
+| `api/index.py` | Vercel Python entrypoint that exposes `paperseek.web_app.app`; Vercel serves it at `/api`. |
+| `vercel.json` | Uses the `api/**/*.py` Python function glob, rewrites routes to `/api`, and sets function max duration. |
 | `requirements.txt` | Vercel Python dependencies. |
 
 ## Choosing Docker or Vercel
