@@ -22,6 +22,7 @@ class PackagingTest(unittest.TestCase):
         self.assertIn("https://github.com/MingfengHong/paperseek", readme)
         self.assertIn("docs/assets/paperseek-web.png", readme)
         self.assertIn("docs/user-manual.md", readme)
+        self.assertIn("docs/deployment.md", readme)
         self.assertNotIn("img.shields.io/badge/OpenAlex", readme)
         self.assertNotIn("img.shields.io/badge/Crossref", readme)
 
@@ -35,10 +36,22 @@ class PackagingTest(unittest.TestCase):
             "## Data sources",
             "## CLI",
             "## Web UI",
+            "## Deployment",
             "## Agent Skill",
             "## Diagnostics and troubleshooting",
         ):
             self.assertIn(heading, manual)
+
+    def test_deployment_files_exist(self):
+        for path in (
+            "Dockerfile",
+            ".dockerignore",
+            "docker-compose.yml",
+            "api/index.py",
+            "vercel.json",
+            "docs/deployment.md",
+        ):
+            self.assertTrue((ROOT / path).exists(), path)
 
 
 if __name__ == "__main__":

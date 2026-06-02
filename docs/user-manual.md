@@ -16,6 +16,7 @@ PaperSeek 是一个 LLM based Literature Search Agent。它面向研究者、学
 - [Data sources](#data-sources)
 - [CLI](#cli)
 - [Web UI](#web-ui)
+- [Deployment](#deployment)
 - [Results and exports](#results-and-exports)
 - [Citation expansion and map](#citation-expansion-and-map)
 - [Agent Skill](#agent-skill)
@@ -245,6 +246,75 @@ python -m pip uninstall paperseek
 ```
 
 如果你使用 editable install，卸载只移除环境中的包链接，不删除源码目录。
+
+## Deployment
+
+PaperSeek 支持 Docker 和 Vercel 部署。完整步骤见 [Docker 与 Vercel 部署指南](deployment.md)。
+
+### Docker 部署
+
+Docker 是完整 Web UI 的推荐部署方式。它适合：
+
+- 长时间搜索。
+- 流式日志。
+- OpenAlex 引用扩展。
+- 私有服务器或实验室部署。
+- 需要稳定运行的团队使用场景。
+
+快速启动：
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+打开：
+
+```text
+http://127.0.0.1:8765/
+```
+
+后台运行：
+
+```bash
+docker compose up -d --build
+```
+
+查看日志：
+
+```bash
+docker compose logs -f
+```
+
+停止：
+
+```bash
+docker compose down
+```
+
+### Vercel 部署
+
+Vercel 适合快速体验和轻量 Web UI 部署：
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FMingfengHong%2Fpaperseek)
+
+Vercel 运行在 serverless function 模型下。PaperSeek 的 Web UI 可以打开，API 也能工作；但长搜索、引用扩展和多轮 LLM 请求可能触发函数时长限制。需要完整稳定体验时，优先使用 Docker。
+
+Vercel 部署所需文件：
+
+| 文件 | 说明 |
+| --- | --- |
+| `api/index.py` | Vercel Python 入口。 |
+| `vercel.json` | 路由重写和函数时长设置。 |
+| `requirements.txt` | Python 依赖。 |
+
+部署后可以用：
+
+```bash
+curl https://your-project.vercel.app/api/sources
+```
+
+确认 API 是否返回数据源列表。
 
 ## Core concepts
 

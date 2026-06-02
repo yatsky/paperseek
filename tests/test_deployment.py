@@ -1,0 +1,38 @@
+import importlib.util
+import json
+import unittest
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+class DeploymentTest(unittest.TestCase):
+    def test_vercel_config_routes_to_fastapi_entrypoint(self):
+        config = json.loads((ROOT / "vercel.json").read_text(encoding="utf-8"))
+        self.assertIn("api/index.py", config["functions"])
+        self.assertEqual(config["functions"]["api/index.py"]["maxDuration"], 300)
+        self.assertEqual(config["rewrites"][0]["destination"], "/api/index.py")
+
+    def test_vercel_entrypoint_exposes_fastapi_app(self):
+        spec = importlib.util.spec_from_file_location("paperseek_vercel_entrypoint", ROOT / "api" / "index.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        self.assertEqual(module.app.title, "PaperSeek")
+
+    def test_dockerfile_runs_web_app_on_container_port(self):
+        dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
+        self.assertIn("EXPOSE 8765", dockerfile)
+        self.assertIn('"0.0.0.0"', dockerfile)
+        self.assertIn('"8765"', dockerfile)
+        self.assertIn("HEALTHCHECK", dockerfile)
+
+    def test_compose_exposes_configurable_host_port(self):
+        compose = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
+        self.assertIn("${PAPERSEEK_PORT:-8765}:8765", compose)
+        self.assertIn("LLM_PROVIDER", compose)
+        self.assertIn("OPENALEX_API_KEY", compose)
+
+
+if __name__ == "__main__":
+    unittest.main()
