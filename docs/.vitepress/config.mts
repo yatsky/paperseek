@@ -26,7 +26,7 @@ export default defineConfig({
     nav: [
       { text: '首页', link: '/' },
       { text: '开源版手册', link: '/user-manual' },
-      { text: '在线体验', link: '/online-demo' },
+      { text: '在线版手册', link: '/online-demo' },
       { text: '部署', link: '/deployment' },
       { text: 'GitHub', link: 'https://github.com/MingfengHong/paperseek' }
     ],

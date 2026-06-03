@@ -10,6 +10,9 @@ hero:
     alt: PaperSeek
   actions:
     - theme: brand
+      text: 进入在线体验
+      link: https://www.paperseek.xyz/
+    - theme: alt
       text: 阅读开源版手册
       link: /user-manual
     - theme: alt
