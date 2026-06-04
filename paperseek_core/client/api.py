@@ -1,4 +1,4 @@
-# noqa: E501
+﻿# noqa: E501
 
 
 import io
@@ -18,12 +18,12 @@ from pydantic import StrictInt, StrictStr, field_validator
 
 from typing import Optional
 
-from paperseek.client.models import Document
-from paperseek.client.models import DocumentsList
+from paperseek_core.client.models import Document
+from paperseek_core.client.models import DocumentsList
 
-from paperseek.client.client import ApiClient
-from paperseek.client.response import ApiResponse
-from paperseek.client.rest import RESTResponseType
+from paperseek_core.client.client import ApiClient
+from paperseek_core.client.response import ApiResponse
+from paperseek_core.client.rest import RESTResponseType
 
 
 class DocumentsApi:
@@ -689,5 +689,3 @@ class DocumentsApi:
             _host=_host,
             _request_auth=_request_auth
         )
-
-

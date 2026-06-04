@@ -1,4 +1,4 @@
-# noqa: E501
+﻿# noqa: E501
 
 from typing import Any, Optional
 

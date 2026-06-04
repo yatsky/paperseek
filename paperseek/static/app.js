@@ -61,6 +61,11 @@ let historyDetail = null;
 let historyStatus = { enabled: true, path: "" };
 let historyLoading = false;
 let historyError = "";
+let environmentConfig = {
+  has_llm_api_key: false,
+  has_wos_api_key: false,
+  llm_provider: "",
+};
 
 const fallbackTimeZone = "Asia/Shanghai";
 const clientTimeZone = detectClientTimeZone();
@@ -149,6 +154,72 @@ function getValue(id) {
 
 function getNumber(id) {
   return Number(document.getElementById(id).value);
+}
+
+function envLlmKeyApplies(provider = providerSelect.value) {
+  return Boolean(environmentConfig.has_llm_api_key && (!environmentConfig.llm_provider || environmentConfig.llm_provider === provider));
+}
+
+function updateCredentialPlaceholders() {
+  const llmKeyInput = document.getElementById("llmApiKey");
+  const wosKeyInput = document.getElementById("wosApiKey");
+  const openAlexKeyInput = document.getElementById("openAlexApiKey");
+  if (llmKeyInput) {
+    if (providerSelect.value === "ollama") {
+      llmKeyInput.placeholder = "Optional for local Ollama";
+    } else if (envLlmKeyApplies(providerSelect.value)) {
+      llmKeyInput.placeholder = "Configured via environment";
+    } else {
+      llmKeyInput.placeholder = "";
+    }
+  }
+  if (wosKeyInput && environmentConfig.has_wos_api_key) {
+    wosKeyInput.placeholder = "Configured via environment";
+  }
+  if (openAlexKeyInput && environmentConfig.has_openalex_api_key) {
+    openAlexKeyInput.placeholder = "Configured via environment";
+  }
+}
+
+async function loadServerDefaults() {
+  try {
+    const response = await fetch("/api/config/defaults");
+    if (!response.ok) {
+      return;
+    }
+    const data = await response.json();
+    environmentConfig = { ...environmentConfig, ...data };
+    if (data.data_source) {
+      dataSourceSelect.value = data.data_source;
+    }
+    if (data.llm_provider && providerDefaults[data.llm_provider]) {
+      providerSelect.value = data.llm_provider;
+    }
+    if (data.llm_api_type) {
+      apiTypeSelect.value = data.llm_api_type;
+    }
+    if (data.llm_model) {
+      modelInput.value = data.llm_model;
+    }
+    if (data.llm_base_url) {
+      baseUrlInput.value = data.llm_base_url;
+    }
+    if (Number.isFinite(Number(data.target_min))) {
+      document.getElementById("targetMin").value = Number(data.target_min);
+    }
+    if (Number.isFinite(Number(data.target_max))) {
+      document.getElementById("targetMax").value = Number(data.target_max);
+    }
+    if (Number.isFinite(Number(data.max_iterations))) {
+      document.getElementById("maxIterations").value = Number(data.max_iterations);
+    }
+    document.getElementById("fetchAbstracts").checked = Boolean(data.fetch_abstracts);
+    document.getElementById("expandCitations").checked = Boolean(data.expand_citations);
+    updateSourceFields();
+    updateCredentialPlaceholders();
+  } catch (_) {
+    updateCredentialPlaceholders();
+  }
 }
 
 function createCitationGraphState() {
@@ -1330,10 +1401,10 @@ function validatePayload(payload) {
       return { ok: false, message: `${label} is required.`, fieldId };
     }
   }
-  if (payload.data_source === "wos" && !String(payload.wos_api_key || "").trim()) {
+  if (payload.data_source === "wos" && !String(payload.wos_api_key || "").trim() && !environmentConfig.has_wos_api_key) {
     return { ok: false, message: "WoS API Key is required for WoS searches.", fieldId: "wosApiKey" };
   }
-  if (payload.llm_provider !== "ollama" && !String(payload.llm_api_key || "").trim()) {
+  if (payload.llm_provider !== "ollama" && !String(payload.llm_api_key || "").trim() && !envLlmKeyApplies(payload.llm_provider)) {
     return { ok: false, message: "LLM API Key is required for this provider.", fieldId: "llmApiKey" };
   }
   if (!String(payload.llm_api_type || "").trim()) {
@@ -1475,7 +1546,7 @@ function applyProviderDefaults() {
   apiTypeSelect.value = defaults.apiType;
   modelInput.value = defaults.model;
   baseUrlInput.value = defaults.baseUrl;
-  document.getElementById("llmApiKey").placeholder = providerSelect.value === "ollama" ? "Optional for local Ollama" : "";
+  updateCredentialPlaceholders();
 }
 
 providerSelect.addEventListener("change", applyProviderDefaults);
@@ -1696,9 +1767,14 @@ form.addEventListener("submit", async (event) => {
   }
 });
 
-updateSourceFields();
-applyProviderDefaults();
-updateExportButtons();
-document.body.dataset.view = activeView;
-renderWorkflow();
-log("Ready. Keys and endpoint settings are held only in this browser session.");
+async function initializeApp() {
+  updateSourceFields();
+  applyProviderDefaults();
+  await loadServerDefaults();
+  updateExportButtons();
+  document.body.dataset.view = activeView;
+  renderWorkflow();
+  log("Ready. Keys and endpoint settings are held only in this browser session.");
+}
+
+initializeApp();

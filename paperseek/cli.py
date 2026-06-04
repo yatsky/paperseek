@@ -35,6 +35,7 @@ from paperseek.config_store import (
     unset_config_value,
 )
 from paperseek.diagnostics import dumps, render_doctor_text, render_smoke_text, run_doctor, smoke_source
+from paperseek.env_loader import load_env_file
 from paperseek.formatter import format_json, format_text
 from paperseek.history import (
     HistoryStore,
@@ -42,14 +43,27 @@ from paperseek.history import (
     safe_search_params_from_config,
 )
 from paperseek.llm_client import LLMError, create_llm_client
-from paperseek.search_agent import WosSearchAgent
+from paperseek.search_agent import PaperSeekAgent
 from paperseek.source_metadata import list_source_metadata, supported_source_ids
 
 COMMANDS = {"search", "doctor", "smoke", "sources", "config", "history", "help"}
 
 
+def _configure_stdio():
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is None:
+            continue
+        try:
+            reconfigure(encoding="utf-8")
+        except Exception:
+            pass
+
+
 def main(argv=None):
+    _configure_stdio()
     argv = list(sys.argv[1:] if argv is None else argv)
+    load_env_file()
     load_user_config_into_env()
 
     if not argv or argv[0] in ("-h", "--help", "help"):
@@ -218,7 +232,7 @@ def _run_search(argv, prog: str):
         print(f"Failed to initialize LLM client: {exc}", file=sys.stderr)
         sys.exit(1)
 
-    agent = WosSearchAgent(config, llm)
+    agent = PaperSeekAgent(config, llm)
 
     try:
         result = agent.search(args.question, verbose=args.verbose)

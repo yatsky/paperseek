@@ -1,4 +1,4 @@
-# noqa: E501
+﻿# noqa: E501
 
 
 import io
@@ -8,7 +8,7 @@ import ssl
 
 import urllib3
 
-from paperseek.client.errors import ApiException, ApiValueError
+from paperseek_core.client.errors import ApiException, ApiValueError
 
 SUPPORTED_SOCKS_PROXIES = {"socks5", "socks5h", "socks4", "socks4a"}
 RESTResponseType = urllib3.HTTPResponse

@@ -15,14 +15,17 @@ from pydantic import BaseModel, Field, field_validator
 from paperseek.client import ApiException
 from paperseek.config import AgentConfig, default_api_type, default_base_url, default_model
 from paperseek.diagnostics import run_doctor, smoke_source
+from paperseek.env_loader import load_env_file
 from paperseek.history import HistoryStore, result_payload_from_search_result, safe_search_params_from_config
 from paperseek.llm_client import LLMError, create_llm_client
 from paperseek.providers import ProviderError
-from paperseek.search_agent import WosSearchAgent
+from paperseek.search_agent import PaperSeekAgent
 from paperseek.source_metadata import list_source_metadata, supported_source_ids
 
 
 STATIC_DIR = Path(__file__).parent / "static"
+
+load_env_file()
 
 app = FastAPI(title="PaperSeek", docs_url=None, redoc_url=None)
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
@@ -52,7 +55,7 @@ class SearchRequest(BaseModel):
     openalex_email: Optional[str] = ""
     crossref_email: Optional[str] = ""
     llm_api_key: Optional[str] = ""
-    llm_provider: str = "openai"
+    llm_provider: str = ""
     llm_api_type: str = ""
     llm_model: Optional[str] = None
     llm_base_url: Optional[str] = None
@@ -77,7 +80,7 @@ class SearchRequest(BaseModel):
     @field_validator("llm_provider")
     @classmethod
     def clean_provider(cls, value: str) -> str:
-        return (value or "openai").strip().lower()
+        return (value or "").strip().lower()
 
     @field_validator("llm_api_type")
     @classmethod
@@ -101,7 +104,7 @@ class DiagnosticRequest(BaseModel):
     openalex_email: Optional[str] = ""
     crossref_email: Optional[str] = ""
     llm_api_key: Optional[str] = ""
-    llm_provider: str = "openai"
+    llm_provider: str = ""
     llm_api_type: str = ""
     llm_model: Optional[str] = None
     llm_base_url: Optional[str] = None
@@ -118,7 +121,7 @@ class DiagnosticRequest(BaseModel):
     @field_validator("llm_provider")
     @classmethod
     def clean_provider(cls, value: str) -> str:
-        return (value or "openai").strip().lower()
+        return (value or "").strip().lower()
 
     @field_validator("llm_api_type")
     @classmethod
@@ -213,30 +216,62 @@ def sources():
     return {"sources": list_source_metadata()}
 
 
+@app.get("/api/config/defaults")
+def config_defaults():
+    config = AgentConfig.from_env()
+    return {
+        "data_source": config.data_source,
+        "llm_provider": config.llm_provider,
+        "llm_api_type": config.llm_api_type,
+        "llm_model": config.llm_model,
+        "llm_base_url": config.llm_base_url,
+        "target_min": config.target_min,
+        "target_max": config.target_max,
+        "max_iterations": config.max_iterations,
+        "expand_citations": config.expand_citations,
+        "fetch_abstracts": config.fetch_abstracts,
+        "has_wos_api_key": bool(config.wos_api_key),
+        "has_openalex_api_key": bool(config.openalex_api_key),
+        "has_openalex_email": bool(config.openalex_email),
+        "has_crossref_email": bool(config.crossref_email),
+        "has_llm_api_key": bool(config.llm_api_key),
+    }
+
+
 def _validate_payload(payload: SearchRequest):
     if payload.target_min > payload.target_max:
         raise HTTPException(status_code=400, detail="Target minimum cannot exceed target maximum.")
-    if payload.data_source == "wos" and not (payload.wos_api_key or "").strip():
+    env_config = AgentConfig.from_env()
+    if payload.data_source == "wos" and not ((payload.wos_api_key or "").strip() or env_config.wos_api_key):
         raise HTTPException(status_code=400, detail="WoS API Key is required for WoS searches.")
 
 
 def _config_from_payload(payload: SearchRequest) -> AgentConfig:
     config = AgentConfig.from_env()
+    env_provider = config.llm_provider
+    payload_provider = payload.llm_provider or config.llm_provider
+    provider_changed = bool(payload.llm_provider and payload_provider != env_provider)
     config.data_source = payload.data_source
-    config.wos_api_key = payload.wos_api_key
-    config.openalex_api_key = payload.openalex_api_key or ""
-    config.openalex_email = payload.openalex_email or ""
-    config.crossref_email = payload.crossref_email or ""
-    config.llm_api_key = payload.llm_api_key or ""
-    config.llm_provider = payload.llm_provider
-    config.llm_api_type = payload.llm_api_type or default_api_type(payload.llm_provider)
+    config.wos_api_key = payload.wos_api_key or config.wos_api_key
+    config.openalex_api_key = payload.openalex_api_key or config.openalex_api_key
+    config.openalex_email = payload.openalex_email or config.openalex_email
+    config.crossref_email = payload.crossref_email or config.crossref_email
+    config.llm_api_key = payload.llm_api_key or config.llm_api_key
+    config.llm_provider = payload_provider
+    if payload.llm_api_type:
+        config.llm_api_type = payload.llm_api_type
+    elif provider_changed or not config.llm_api_type:
+        config.llm_api_type = default_api_type(config.llm_provider)
     if payload.llm_model:
         config.llm_model = payload.llm_model
-    else:
-        config.llm_model = default_model(payload.llm_provider)
-    config.llm_base_url = payload.llm_base_url or default_base_url(payload.llm_provider, config.llm_api_type)
-    config.wos_db = payload.wos_db or "WOS"
-    config.search_field = payload.search_field or ""
+    elif provider_changed or not config.llm_model:
+        config.llm_model = default_model(config.llm_provider)
+    if payload.llm_base_url:
+        config.llm_base_url = payload.llm_base_url
+    elif provider_changed or not config.llm_base_url:
+        config.llm_base_url = default_base_url(config.llm_provider, config.llm_api_type)
+    config.wos_db = payload.wos_db or config.wos_db or "WOS"
+    config.search_field = payload.search_field or config.search_field or ""
     config.fetch_abstracts = payload.fetch_abstracts
     config.expand_citations = payload.expand_citations
     config.target_min = payload.target_min
@@ -322,7 +357,7 @@ def search(payload: SearchRequest):
     try:
         config.validate()
         llm = create_llm_client(config)
-        agent = WosSearchAgent(config, llm)
+        agent = PaperSeekAgent(config, llm)
         result = agent.search(payload.question, verbose=False)
         response = _response_payload(result, payload.data_source)
         if run_id:
@@ -387,7 +422,7 @@ def search_stream(payload: SearchRequest):
                 send({"type": "log", "message": "Initializing LLM client."})
                 llm = create_llm_client(config)
                 send({"type": "log", "message": "Initializing source adapter."})
-                agent = WosSearchAgent(config, llm)
+                agent = PaperSeekAgent(config, llm)
                 result = agent.search(payload.question, verbose=False, event_handler=send)
                 response = _response_payload(result, payload.data_source)
                 if run_id:

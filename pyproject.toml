@@ -58,7 +58,7 @@ paperseek = "paperseek.cli:main"
 paperseek-web = "paperseek.web_app:main"
 
 [tool.setuptools.packages.find]
-include = ["paperseek*"]
+include = ["paperseek*", "paperseek_core*"]
 
 [tool.setuptools.package-data]
 paperseek = ["static/*"]
