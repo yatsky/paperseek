@@ -43,6 +43,7 @@
                 <span>Run Search</span>
                 <span aria-hidden="true">-></span>
               </button>
+              <button id="stopButton" class="secondary-button" type="button" disabled>Stop</button>
               <button id="checkConfigButton" class="secondary-button" type="button">Check Config</button>
             </div>
           </section>
@@ -50,123 +51,143 @@
           <section class="config-section">
             <div class="section-header">
               <div>
-                <div class="section-kicker">Session Settings</div>
-                <h2>Temporary configuration</h2>
+                <div class="section-kicker">Configuration</div>
+                <h2>Model API and source</h2>
               </div>
-              <span class="privacy-pill">Not saved</span>
+              <span class="privacy-pill">Session only</span>
             </div>
 
             <div class="config-group">
-              <div class="config-group-title">Data Source</div>
-              <div class="field-grid">
-                <label class="field span-2">
-                  <span>Data Source</span>
-                  <select id="dataSource">
-                    <option value="openalex" selected>OpenAlex (precise search)</option>
-                    <option value="crossref">Crossref (metadata / DOI registry)</option>
-                    <option value="wos">Web of Science Starter (temporarily unavailable)</option>
-                  </select>
-                </label>
-
-                <label id="wosKeyField" class="field span-2 source-field source-wos">
-                  <span>WoS API Key</span>
-                  <input id="wosApiKey" type="password" autocomplete="off">
-                </label>
-                <label id="openAlexKeyField" class="field span-2 source-field source-openalex">
-                  <span>OpenAlex API Key</span>
-                  <input id="openAlexApiKey" type="password" placeholder="Optional if anonymous access is available" autocomplete="off">
-                </label>
-                <label id="openAlexEmailField" class="field span-2 source-field source-openalex">
-                  <span>OpenAlex Email</span>
-                  <input id="openAlexEmail" type="email" placeholder="Optional polite-pool email" autocomplete="off">
-                </label>
-                <label id="crossrefEmailField" class="field span-2 source-field source-crossref">
-                  <span>Crossref Email</span>
-                  <input id="crossrefEmail" type="email" placeholder="Optional polite-pool email" autocomplete="off">
-                </label>
-                <label id="wosDbField" class="field source-field source-wos">
-                  <span>WoS DB</span>
-                  <input id="wosDb" type="text" value="WOS" autocomplete="off">
-                </label>
-                <label class="field">
-                  <span>Field Hint</span>
-                  <input id="searchField" type="text" placeholder="Optional discipline" autocomplete="off">
-                </label>
-              </div>
-            </div>
-
-            <div class="config-group">
-              <div class="config-group-title">LLM Settings</div>
+              <div class="config-group-title">Model API</div>
               <div class="field-grid">
                 <label class="field span-2">
                   <span>Provider</span>
                   <select id="llmProvider">
+                    <option value="cstcloud">中国科技云（CSTCloud）</option>
+                    <option value="deepseek">DeepSeek</option>
+                    <option value="modelscope">ModelScope API-Inference（魔搭）</option>
+                    <option value="siliconflow">硅基流动（SiliconFlow）</option>
+                    <option value="dashscope">阿里云百炼（DashScope）</option>
+                    <option value="openrouter">OpenRouter</option>
                     <option value="openai">OpenAI</option>
                     <option value="anthropic">Anthropic</option>
                     <option value="google">Google Gemini</option>
-                    <option value="deepseek">DeepSeek</option>
-                    <option value="cstcloud">中国科技云（CSTCloud）</option>
-                    <option value="dashscope">阿里云百炼（DashScope）</option>
-                    <option value="moonshot">Kimi（Moonshot）</option>
                     <option value="zhipu">智谱 AI（GLM）</option>
-                    <option value="siliconflow">硅基流动（SiliconFlow）</option>
-                    <option value="openrouter">OpenRouter</option>
+                    <option value="moonshot">Kimi（Moonshot）</option>
                     <option value="volcengine">火山方舟</option>
                     <option value="hunyuan">腾讯混元</option>
                     <option value="qianfan">百度千帆</option>
-                    <option value="modelscope">ModelScope（魔搭）</option>
                     <option value="ollama">Ollama（本地）</option>
                     <option value="custom">Custom</option>
                   </select>
-                </label>
-                <label class="field">
-                  <span>API Type</span>
-                  <select id="llmApiType">
-                    <option value="openai_responses">OpenAI Responses API</option>
-                    <option value="openai_chat">OpenAI Chat Completions API</option>
-                    <option value="anthropic_messages">Anthropic Messages API</option>
-                  </select>
-                </label>
-                <label class="field">
-                  <span>Model</span>
-                  <input id="llmModel" type="text" value="gpt-5.4-mini" autocomplete="off">
-                </label>
-                <label class="field span-2">
-                  <span>Base URL</span>
-                  <input id="llmBaseUrl" type="url" placeholder="Provider default, editable for compatible endpoints" autocomplete="off">
                 </label>
                 <label class="field span-2">
                   <span>API Key</span>
                   <input id="llmApiKey" type="password" autocomplete="off">
                 </label>
+                <label class="field">
+                  <span>Model</span>
+                  <input id="llmModel" type="text" value="gpt-5.4-mini" autocomplete="off">
+                </label>
+                <div class="source-summary">
+                  <span>Source</span>
+                  <strong id="basicSourceName">OpenAlex</strong>
+                  <small id="basicSourceMeta">Optional source keys are in Advanced settings.</small>
+                </div>
               </div>
             </div>
 
-            <div class="config-group">
-              <div class="config-group-title">Run Parameters</div>
-              <div class="field-grid">
-                <label class="field">
-                  <span>Min Results</span>
-                  <input id="targetMin" type="number" value="5" min="0" max="50">
-                </label>
-                <label class="field">
-                  <span>Max Results</span>
-                  <input id="targetMax" type="number" value="50" min="1" max="50">
-                </label>
-                <label class="field">
-                  <span>Iterations</span>
-                  <input id="maxIterations" type="number" value="5" min="1" max="10">
-                </label>
-                <label id="fetchAbstractsField" class="toggle-field source-field source-wos">
-                  <input id="fetchAbstracts" type="checkbox">
-                  <span>Try external abstracts</span>
-                </label>
-                <label id="expandCitationsField" class="toggle-field source-field source-openalex">
-                  <input id="expandCitations" type="checkbox" checked>
-                  <span>Expand citations (OpenAlex)</span>
-                </label>
+            <details id="advancedSettings" class="config-advanced">
+              <summary>
+                <span>Advanced settings</span>
+                <small>Protocol, source keys, and run controls</small>
+              </summary>
+
+              <div class="config-advanced-body">
+                <div class="config-group">
+                  <div class="config-group-title">Model protocol</div>
+                  <div class="field-grid">
+                    <label class="field">
+                      <span>API Type</span>
+                      <select id="llmApiType">
+                        <option value="openai_responses">OpenAI Responses API</option>
+                        <option value="openai_chat">OpenAI Chat Completions API</option>
+                        <option value="anthropic_messages">Anthropic Messages API</option>
+                      </select>
+                    </label>
+                    <label class="field">
+                      <span>Base URL</span>
+                      <input id="llmBaseUrl" type="url" placeholder="Provider default, editable for compatible endpoints" autocomplete="off">
+                    </label>
+                  </div>
+                </div>
+
+                <div class="config-group">
+                  <div class="config-group-title">Source settings</div>
+                  <div class="field-grid">
+                    <label class="field span-2">
+                      <span>Data Source</span>
+                      <select id="dataSource">
+                        <option value="openalex" selected>OpenAlex (precise search)</option>
+                        <option value="crossref">Crossref (metadata / DOI registry)</option>
+                        <option value="wos">Web of Science Starter (temporarily unavailable)</option>
+                      </select>
+                    </label>
+
+                    <label id="openAlexKeyField" class="field span-2 source-field source-openalex">
+                      <span>OpenAlex API Key</span>
+                      <input id="openAlexApiKey" type="password" placeholder="Optional if anonymous access is available" autocomplete="off">
+                    </label>
+                    <label id="openAlexEmailField" class="field span-2 source-field source-openalex">
+                      <span>OpenAlex Email</span>
+                      <input id="openAlexEmail" type="email" placeholder="Optional polite-pool email" autocomplete="off">
+                    </label>
+                    <label id="crossrefEmailField" class="field span-2 source-field source-crossref">
+                      <span>Crossref Email</span>
+                      <input id="crossrefEmail" type="email" placeholder="Optional polite-pool email" autocomplete="off">
+                    </label>
+                    <label id="wosKeyField" class="field span-2 source-field source-wos">
+                      <span>WoS API Key</span>
+                      <input id="wosApiKey" type="password" autocomplete="off">
+                    </label>
+                    <label id="wosDbField" class="field source-field source-wos">
+                      <span>WoS DB</span>
+                      <input id="wosDb" type="text" value="WOS" autocomplete="off">
+                    </label>
+                    <label class="field">
+                      <span>Field Hint</span>
+                      <input id="searchField" type="text" placeholder="Optional discipline" autocomplete="off">
+                    </label>
+                  </div>
+                </div>
+
+                <div class="config-group">
+                  <div class="config-group-title">Run controls</div>
+                  <div class="field-grid">
+                    <label class="field">
+                      <span>Min Results</span>
+                      <input id="targetMin" type="number" value="5" min="0" max="50">
+                    </label>
+                    <label class="field">
+                      <span>Max Results</span>
+                      <input id="targetMax" type="number" value="50" min="1" max="50">
+                    </label>
+                    <label class="field">
+                      <span>Iterations</span>
+                      <input id="maxIterations" type="number" value="5" min="1" max="10">
+                    </label>
+                    <label id="fetchAbstractsField" class="toggle-field source-field source-wos">
+                      <input id="fetchAbstracts" type="checkbox">
+                      <span>Try external abstracts</span>
+                    </label>
+                    <label id="expandCitationsField" class="toggle-field source-field source-openalex">
+                      <input id="expandCitations" type="checkbox" checked>
+                      <span>Expand citations</span>
+                    </label>
+                  </div>
+                </div>
               </div>
-            </div>
+            </details>
           </section>
         </form>
       </section>
@@ -185,6 +206,19 @@
         </aside>
       </section>
     </main>
+
+    <div id="configAlert" class="config-alert is-hidden" role="alertdialog" aria-modal="true" aria-labelledby="configAlertTitle">
+      <section class="config-alert-card">
+        <div class="section-kicker">Configuration check</div>
+        <h2 id="configAlertTitle">Configuration failed</h2>
+        <p id="configAlertMessage">PaperSeek found a configuration issue.</p>
+        <ul id="configAlertList" class="config-alert-list"></ul>
+        <div class="config-alert-actions">
+          <button id="configAlertAdvancedButton" class="secondary-button" type="button">Open Advanced Settings</button>
+          <button id="configAlertCloseButton" class="primary-inline-button" type="button">Close</button>
+        </div>
+      </section>
+    </div>
 
     <script src="/static/app.js"></script>
   </body>

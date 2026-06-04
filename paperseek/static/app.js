@@ -5,6 +5,7 @@ const runId = document.getElementById("runId");
 const stateLabel = document.getElementById("stateLabel");
 const stepLabel = document.getElementById("stepLabel");
 const searchButton = document.getElementById("searchButton");
+const stopButton = document.getElementById("stopButton");
 const dataSourceSelect = document.getElementById("dataSource");
 const providerSelect = document.getElementById("llmProvider");
 const apiTypeSelect = document.getElementById("llmApiType");
@@ -14,6 +15,15 @@ const exportLogButton = document.getElementById("exportLogButton");
 const exportCsvButton = document.getElementById("exportCsvButton");
 const checkConfigButton = document.getElementById("checkConfigButton");
 const viewTabs = [...document.querySelectorAll(".mode-tabs .tab")];
+const basicSourceName = document.getElementById("basicSourceName");
+const basicSourceMeta = document.getElementById("basicSourceMeta");
+const advancedSettings = document.getElementById("advancedSettings");
+const configAlert = document.getElementById("configAlert");
+const configAlertTitle = document.getElementById("configAlertTitle");
+const configAlertMessage = document.getElementById("configAlertMessage");
+const configAlertList = document.getElementById("configAlertList");
+const configAlertCloseButton = document.getElementById("configAlertCloseButton");
+const configAlertAdvancedButton = document.getElementById("configAlertAdvancedButton");
 
 const providerDefaults = {
   openai: { model: "gpt-5.4-mini", apiType: "openai_responses", baseUrl: "https://api.openai.com/v1" },
@@ -40,6 +50,16 @@ const sourceLabels = {
   crossref: "Crossref (metadata / DOI registry)",
   wos: "Web of Science Starter (temporarily unavailable)",
 };
+const compactSourceLabels = {
+  openalex: "OpenAlex",
+  crossref: "Crossref",
+  wos: "Web of Science Starter",
+};
+const sourceMetaLabels = {
+  openalex: "Optional OpenAlex API key and email are in Advanced settings.",
+  crossref: "Crossref email is optional but recommended in Advanced settings.",
+  wos: "WoS requires an API key in Advanced settings.",
+};
 
 let workflowState = createWorkflowState();
 let latestPayload = null;
@@ -61,6 +81,7 @@ let historyDetail = null;
 let historyStatus = { enabled: true, path: "" };
 let historyLoading = false;
 let historyError = "";
+let activeSearchController = null;
 let environmentConfig = {
   has_llm_api_key: false,
   has_wos_api_key: false,
@@ -134,8 +155,15 @@ function log(message) {
 function setBusy(isBusy) {
   searchButton.disabled = isBusy;
   checkConfigButton.disabled = isBusy;
+  if (stopButton) {
+    stopButton.disabled = !isBusy;
+  }
   searchButton.querySelector("span").textContent = isBusy ? "Searching" : "Run Search";
-  stateLabel.textContent = isBusy ? "Processing" : "Ready";
+  if (isBusy) {
+    stateLabel.textContent = "Processing";
+  } else if (!["Error", "Stopped"].includes(stateLabel.textContent)) {
+    stateLabel.textContent = "Ready";
+  }
   document.body.classList.toggle("is-busy", isBusy);
 }
 
@@ -154,6 +182,16 @@ function getValue(id) {
 
 function getNumber(id) {
   return Number(document.getElementById(id).value);
+}
+
+function updateSourceSummary() {
+  const source = dataSourceSelect.value || "openalex";
+  if (basicSourceName) {
+    basicSourceName.textContent = compactSourceLabels[source] || source.toUpperCase();
+  }
+  if (basicSourceMeta) {
+    basicSourceMeta.textContent = sourceMetaLabels[source] || "Source details are in Advanced settings.";
+  }
 }
 
 function envLlmKeyApplies(provider = providerSelect.value) {
@@ -217,8 +255,10 @@ async function loadServerDefaults() {
     document.getElementById("expandCitations").checked = Boolean(data.expand_citations);
     updateSourceFields();
     updateCredentialPlaceholders();
+    updateSourceSummary();
   } catch (_) {
     updateCredentialPlaceholders();
+    updateSourceSummary();
   }
 }
 
@@ -1392,6 +1432,51 @@ function showRunError(message) {
   log(`Error: ${message}`);
 }
 
+function hideConfigAlert() {
+  if (configAlert) {
+    configAlert.classList.add("is-hidden");
+  }
+}
+
+function showConfigAlert(title, message, checks = []) {
+  if (!configAlert || !configAlertTitle || !configAlertMessage || !configAlertList) {
+    return;
+  }
+  configAlertTitle.textContent = title;
+  configAlertMessage.textContent = message;
+  configAlertList.textContent = "";
+  const displayChecks = checks.length ? checks : [{ summary: message, actions: [] }];
+  displayChecks.slice(0, 6).forEach((check) => {
+    const item = document.createElement("li");
+    const summary = document.createElement("strong");
+    summary.textContent = check.summary || check.id || "Configuration check failed.";
+    item.appendChild(summary);
+    const actions = Array.isArray(check.actions) ? check.actions : [];
+    actions.slice(0, 4).forEach((action) => {
+      const actionNode = document.createElement("span");
+      actionNode.textContent = action;
+      item.appendChild(actionNode);
+    });
+    configAlertList.appendChild(item);
+  });
+  configAlert.classList.remove("is-hidden");
+  if (configAlertCloseButton) {
+    configAlertCloseButton.focus();
+  }
+}
+
+function showRunStopped() {
+  latestError = "Search stopped by user.";
+  updateExportButtons();
+  stateLabel.textContent = "Stopped";
+  workflowState.results.status = "EMPTY";
+  workflowState.results.title = "Search Stopped";
+  workflowState.results.description = "The request was stopped before completion.";
+  workflowState.results.body = emptyState("No final result was produced for this run.");
+  renderWorkflow();
+  log("Search stopped by user.");
+}
+
 function validatePayload(payload) {
   const required = [
     ["question", "Research Question", "question"],
@@ -1463,6 +1548,7 @@ function buildPayload() {
 
 async function checkConfiguration() {
   clearValidationState();
+  hideConfigAlert();
   const payload = buildPayload();
   if (!String(payload.question || "").trim()) {
     payload.question = "machine learning";
@@ -1486,8 +1572,21 @@ async function checkConfiguration() {
       log(`[${label}] ${check.summary || check.id || "diagnostic check"}`);
       (check.actions || []).forEach((action) => log(`  - ${action}`));
     });
+    if (String(data.status || "").toLowerCase() === "fail") {
+      const failedChecks = (data.checks || []).filter((check) => String(check.status || "").toLowerCase() === "fail");
+      showConfigAlert(
+        "Configuration failed",
+        "Fix the items below before running a search.",
+        failedChecks,
+      );
+    }
   } catch (error) {
     log(`Configuration check error: ${error.message}`);
+    showConfigAlert(
+      "Configuration check failed",
+      "PaperSeek could not complete the configuration check.",
+      [{ summary: error.message, actions: ["Review the required model and source settings, then run Check Config again."] }],
+    );
   } finally {
     checkConfigButton.disabled = false;
   }
@@ -1497,6 +1596,7 @@ function updateSourceFields() {
   const source = dataSourceSelect.value;
   document.querySelectorAll(".source-field").forEach((node) => node.classList.add("is-hidden"));
   document.querySelectorAll(`.source-${source}`).forEach((node) => node.classList.remove("is-hidden"));
+  updateSourceSummary();
 }
 
 async function readNdjsonStream(response) {
@@ -1550,6 +1650,38 @@ function applyProviderDefaults() {
 }
 
 providerSelect.addEventListener("change", applyProviderDefaults);
+
+if (stopButton) {
+  stopButton.addEventListener("click", () => {
+    if (!activeSearchController) {
+      return;
+    }
+    stateLabel.textContent = "Stopping";
+    log("Stop requested.");
+    activeSearchController.abort();
+  });
+}
+
+if (configAlertCloseButton) {
+  configAlertCloseButton.addEventListener("click", hideConfigAlert);
+}
+
+if (configAlertAdvancedButton) {
+  configAlertAdvancedButton.addEventListener("click", () => {
+    if (advancedSettings) {
+      advancedSettings.open = true;
+    }
+    hideConfigAlert();
+  });
+}
+
+if (configAlert) {
+  configAlert.addEventListener("click", (event) => {
+    if (event.target === configAlert) {
+      hideConfigAlert();
+    }
+  });
+}
 
 viewTabs.forEach((tab) => {
   tab.addEventListener("click", () => switchView(tab.dataset.view || "search"));
@@ -1743,6 +1875,7 @@ form.addEventListener("submit", async (event) => {
   workflowState.query.body = emptyState("Submitting request to local backend.");
   renderWorkflow();
   setBusy(true);
+  activeSearchController = new AbortController();
   log(`Run ${id} started.`);
   log(`Source: ${payload.data_source}; provider: ${payload.llm_provider}; api type: ${payload.llm_api_type}; model: ${payload.llm_model || "provider default"}.`);
   log(`Target range: ${payload.target_min}-${payload.target_max}; max iterations: ${payload.max_iterations}.`);
@@ -1752,6 +1885,7 @@ form.addEventListener("submit", async (event) => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
+      signal: activeSearchController.signal,
     });
     log(`Backend POST /api/search/stream -> HTTP ${response.status} ${response.ok ? "OK" : "ERROR"}.`);
     if (!response.ok || !response.body) {
@@ -1760,17 +1894,26 @@ form.addEventListener("submit", async (event) => {
     }
     await readNdjsonStream(response);
   } catch (error) {
-    showRunError(error.message);
+    if (error.name === "AbortError") {
+      showRunStopped();
+    } else {
+      showRunError(error.message);
+    }
   } finally {
+    activeSearchController = null;
     setBusy(false);
     updateExportButtons();
   }
 });
 
 async function initializeApp() {
+  if (advancedSettings) {
+    advancedSettings.open = false;
+  }
   updateSourceFields();
   applyProviderDefaults();
   await loadServerDefaults();
+  updateSourceSummary();
   updateExportButtons();
   document.body.dataset.view = activeView;
   renderWorkflow();
