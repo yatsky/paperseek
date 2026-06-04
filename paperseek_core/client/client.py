@@ -1,4 +1,4 @@
-# noqa: E501
+﻿# noqa: E501
 
 
 import atexit
@@ -13,11 +13,11 @@ import tempfile
 from urllib.parse import quote
 from typing import Tuple, Optional, List
 
-from paperseek.client.config import Configuration
-from paperseek.client.response import ApiResponse
-import paperseek.client.models
-from paperseek.client import rest
-from paperseek.client.errors import (
+from paperseek_core.client.config import Configuration
+from paperseek_core.client.response import ApiResponse
+import paperseek_core.client.models
+from paperseek_core.client import rest
+from paperseek_core.client.errors import (
     ApiValueError,
     ApiException,
     BadRequestException,
@@ -404,7 +404,7 @@ class ApiClient:
             if klass in self.NATIVE_TYPES_MAPPING:
                 klass = self.NATIVE_TYPES_MAPPING[klass]
             else:
-                klass = getattr(paperseek.client.models, klass)
+                klass = getattr(paperseek_core.client.models, klass)
 
         if klass in self.PRIMITIVE_TYPES:
             return self.__deserialize_primitive(data, klass)

@@ -1,4 +1,4 @@
-# pydantic models for WoS Starter API responses
+﻿# pydantic models for WoS Starter API responses
 from __future__ import annotations
 import pprint, re, json
 from typing import Any, ClassVar, Dict, List, Optional
@@ -914,6 +914,3 @@ class Document(BaseModel):
             "keywords": DocumentKeywords.from_dict(obj.get("keywords")) if obj.get("keywords") is not None else None
         })
         return _obj
-
-
-

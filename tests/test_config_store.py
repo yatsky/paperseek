@@ -6,11 +6,27 @@ from pathlib import Path
 from paperseek import config_store
 
 
+ENV_KEYS = (
+    "DATA_SOURCE",
+    "WOS_API_KEY",
+    "OPENALEX_API_KEY",
+    "OPENALEX_EMAIL",
+    "CROSSREF_EMAIL",
+    "LLM_API_KEY",
+    "LLM_PROVIDER",
+    "LLM_API_TYPE",
+    "LLM_MODEL",
+    "LLM_BASE_URL",
+)
+
+
 class ConfigStoreTest(unittest.TestCase):
     def test_set_list_and_mask_config_value(self):
-        previous = os.environ.get("PAPERSEEK_CONFIG_FILE")
+        previous = {key: os.environ.get(key) for key in ("PAPERSEEK_CONFIG_FILE", *ENV_KEYS)}
         with tempfile.TemporaryDirectory() as tmp:
             os.environ["PAPERSEEK_CONFIG_FILE"] = str(Path(tmp) / "config.json")
+            for key in ENV_KEYS:
+                os.environ.pop(key, None)
             try:
                 config_store.set_config_value("LLM_API_KEY", "sk-test-123456")
                 entries = config_store.list_config_entries()
@@ -21,10 +37,10 @@ class ConfigStoreTest(unittest.TestCase):
                 config_store.unset_config_value("LLM_API_KEY")
                 self.assertNotIn("LLM_API_KEY", config_store.read_config())
             finally:
-                if previous is None:
-                    os.environ.pop("PAPERSEEK_CONFIG_FILE", None)
-                else:
-                    os.environ["PAPERSEEK_CONFIG_FILE"] = previous
+                for key, value in previous.items():
+                    os.environ.pop(key, None)
+                    if value is not None:
+                        os.environ[key] = value
 
 
 if __name__ == "__main__":
