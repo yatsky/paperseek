@@ -19,6 +19,7 @@ PaperSeek 是一个 LLM based Literature Search Agent。它面向研究者、学
 - [Deployment](#deployment)
 - [Results and exports](#results-and-exports)
 - [Citation expansion and map](#citation-expansion-and-map)
+- [Python API and core](#python-api-and-core)
 - [Agent Skill](#agent-skill)
 - [Diagnostics and troubleshooting](#diagnostics-and-troubleshooting)
 - [Security and privacy](#security-and-privacy)
@@ -479,10 +480,10 @@ Web UI 运行时：
 cp .env.example .env
 ```
 
-`.env` 不会被 Git 跟踪。PaperSeek CLI 不会自动读取 `.env` 文件；你可以选择：
+`.env` 不会被 Git 跟踪。PaperSeek CLI 和 Web 后端会自动读取当前目录或项目根目录下的 `.env`；已经存在的系统环境变量优先于 `.env`。你还可以选择：
 
 - 手动把 `.env` 中的变量导入 shell。
-- 使用 `paperseek config import-env .env` 导入用户级配置。
+- 使用 `paperseek config import-env .env` 导入用户级配置，便于脱离源码目录运行。
 - 在 Web UI 中手动填写本次会话字段。
 
 ### 用户级配置文件
@@ -1431,6 +1432,16 @@ Citation Map 不是文献计量分析工具，而是探索界面。建议：
 - 关注连接多个主题的论文。
 - 不要仅凭图中位置判断论文重要性。
 - 最终纳入文献仍需人工阅读摘要或全文。
+
+## Python API and core
+
+社区版安装包已经内置可复用核心模块 `paperseek_core`，不需要额外安装单独的 `paperseek-core` 仓库依赖。常规用户和下游代码建议从 `paperseek` 导入稳定入口：
+
+```python
+from paperseek import PaperSeekAgent
+```
+
+`PaperSeekAgent` 是当前推荐的 agent 类名。`LiteratureSearchAgent` 和 `WosSearchAgent` 仍保留为兼容旧代码的别名，新代码请不要再依赖旧命名。
 
 ## Agent Skill
 

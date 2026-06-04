@@ -165,7 +165,7 @@ export LLM_BASE_URL=http://127.0.0.1:11434/v1
 paperseek-web
 ```
 
-The repository includes `.env.example`. Copy it to `.env` for local reference, but never commit real API keys.
+The repository includes `.env.example`. Copy it to `.env` for local reference, but never commit real API keys. The CLI and Web backend automatically load `.env` from the current directory or project root; existing system environment variables take precedence.
 
 ## Web UI
 
@@ -178,7 +178,7 @@ The Web UI has four main workspaces:
 | Citation Map | Explore OpenAlex citation expansion as a directed graph. |
 | History | Review locally saved runs, final queries, ranked records, and run events. |
 
-API keys, base URLs, and run parameters entered in the Web UI are used only for the current browser session and are not written to local config files by PaperSeek. Local history saves run summaries, queries, events, and results, but never raw API keys.
+If API keys are already configured through system environment variables or `.env`, the Web UI shows that the environment is configured without sending secret values to the browser. API keys, base URLs, and run parameters entered in the Web UI are used only for the current browser session and are not written to local config files by PaperSeek. Local history saves run summaries, queries, events, and results, but never raw API keys.
 
 CSV files exported from Results use the research-question theme and local date in the filename.
 
@@ -394,6 +394,16 @@ WoS Starter requires approval in Clarivate Developer Portal and usually fits use
 9. After receiving the API key, fill `WoS API Key` in the Web UI or set `WOS_API_KEY`.
 
 WoS Starter limits, fields, and availability depend on plan and institutional entitlement. For HTTP 401, check HTTPS and the key. For Clarivate's non-standard HTTP 512, check Clarivate service status, subscription approval, and query compatibility.
+
+## Python API and Core
+
+The community package includes the reusable `paperseek_core` module directly, so users do not need to install a separate `paperseek-core` repository dependency. Regular users and downstream code should import the stable public entry point from `paperseek`:
+
+```python
+from paperseek import PaperSeekAgent
+```
+
+`LiteratureSearchAgent` and `WosSearchAgent` remain as backward-compatible aliases. New code should use `PaperSeekAgent`.
 
 ## Agent Skill
 
