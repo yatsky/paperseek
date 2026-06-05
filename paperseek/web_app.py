@@ -5,7 +5,7 @@ import json
 from queue import Queue
 import re
 from threading import Thread
-from typing import Optional
+from typing import List, Optional
 
 import uvicorn
 from fastapi import FastAPI, HTTPException, Query
@@ -65,7 +65,7 @@ class SearchRequest(BaseModel):
     llm_base_url: Optional[str] = None
     wos_db: str = "WOS"
     search_field: Optional[str] = ""
-    discipline_fields: list[str] = Field(default_factory=list)
+    discipline_fields: List[str] = Field(default_factory=list)
     client_timezone: Optional[str] = ""
     client_utc_offset_minutes: Optional[int] = None
     fetch_abstracts: bool = False
@@ -102,7 +102,7 @@ class SearchRequest(BaseModel):
 
     @field_validator("discipline_fields", mode="before")
     @classmethod
-    def clean_discipline_fields(cls, value) -> list[str]:
+    def clean_discipline_fields(cls, value) -> List[str]:
         return list(normalize_discipline_ids(value))
 
 
@@ -120,7 +120,7 @@ class DiagnosticRequest(BaseModel):
     llm_base_url: Optional[str] = None
     wos_db: str = "WOS"
     search_field: Optional[str] = ""
-    discipline_fields: list[str] = Field(default_factory=list)
+    discipline_fields: List[str] = Field(default_factory=list)
     client_timezone: Optional[str] = ""
     client_utc_offset_minutes: Optional[int] = None
     fetch_abstracts: bool = False
@@ -149,7 +149,7 @@ class DiagnosticRequest(BaseModel):
 
     @field_validator("discipline_fields", mode="before")
     @classmethod
-    def clean_discipline_fields(cls, value) -> list[str]:
+    def clean_discipline_fields(cls, value) -> List[str]:
         return list(normalize_discipline_ids(value))
 
 
