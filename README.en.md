@@ -5,17 +5,15 @@
 [![CI](https://github.com/MingfengHong/paperseek/actions/workflows/ci.yml/badge.svg)](https://github.com/MingfengHong/paperseek/actions/workflows/ci.yml)
 [![Status](https://img.shields.io/badge/status-alpha-orange)](#project-status)
 
-**Language: [简体中文](README.md) | English**
+**Docs: [PaperSeek Docs](https://docs.paperseek.xyz/) | Language: [简体中文](README.md) | English**
 
 **LLM based Literature Search Agent.** PaperSeek helps researchers start literature searches in natural language, iteratively refine database queries, expand candidate papers through citation links, rank records, and export a reviewable paper list.
 
-Try it online: [Live Demo](https://www.paperseek.xyz/). The hosted demo uses ModelScope account sign-in, runs model calls with the signed-in user's API Inference quota, and stores search history in the hosted service. See the [hosted demo guide](docs/online-demo.md) for details.
+Try it online: [Live Demo](https://www.paperseek.xyz/). The hosted demo supports either the ModelScope service or your own model API. Sign in to use ModelScope API-Inference quota and hosted history, or run with your own API key without signing in. See the [hosted demo guide](docs/online-demo.md) for details.
 
 ![PaperSeek web interface](https://raw.githubusercontent.com/MingfengHong/paperseek/main/docs/assets/paperseek-web.png)
 
-Documentation site: [PaperSeek Docs](https://docs.paperseek.xyz/).
-Full Chinese user manual: [PaperSeek User Manual](docs/user-manual.md).
-Deployment guide: [Docker and Vercel deployment](docs/deployment.md).
+Full Chinese user manual: [PaperSeek User Manual](docs/user-manual.md); deployment guide: [Docker and Vercel deployment](docs/deployment.md).
 
 ## Overview
 
@@ -42,6 +40,7 @@ PaperSeek is designed for first-pass paper discovery and metadata organization. 
 | Result export | Select papers in the Results view and export them as CSV. |
 | Citation map | Shows citation direction with arrows; supports drag, zoom, and pan. |
 | CLI and Web UI | Run from the command line or through a local browser interface. |
+| English / Chinese UI | The Web UI can switch between `EN` and `中文`, with the choice saved in the current browser. |
 | Local history | Self-hosted installs save search runs, events, and ranked records to local SQLite by default. |
 | Docker / Vercel deployment | Supports full Docker deployments and Vercel demos. |
 | Diagnostics | `doctor`, `smoke`, and `sources` help debug API keys, source adapters, and protocol settings. |

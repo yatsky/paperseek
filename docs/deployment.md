@@ -11,7 +11,7 @@ PaperSeek Web UI 常见部署方式有两种：
 https://www.paperseek.xyz/
 ```
 
-在线体验版的登录、额度和历史记录说明见 [在线体验版用户手册](online-demo.md)。
+在线体验版的两种模型模式、登录权限、ModelScope 额度和历史记录说明见 [在线体验版用户手册](online-demo.md)。
 
 ## Docker
 
