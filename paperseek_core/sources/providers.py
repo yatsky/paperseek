@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Sequence
 
 import re
 import requests
@@ -55,7 +55,6 @@ class PaperIdentifiers:
     eisbn: str = ""
     pmid: str = ""
     openalex: str = ""
-    semantic_scholar: str = ""
 
 
 @dataclass
@@ -182,7 +181,13 @@ class OpenAlexProvider:
         self.email = (email or "").strip()
         self.last_response_info: Dict[str, Any] = {}
 
-    def search(self, query: str, limit: int = 50, page: int = 1) -> ProviderSearchResult:
+    def search(
+        self,
+        query: str,
+        limit: int = 50,
+        page: int = 1,
+        field_ids: Optional[Sequence[str]] = None,
+    ) -> ProviderSearchResult:
         query = (query or "").strip()
         if not query:
             raise ProviderError("openalex", "OpenAlex search query is empty.")
@@ -212,6 +217,9 @@ class OpenAlexProvider:
                 "referenced_works",
             ]),
         }
+        normalized_field_ids = [str(field_id).strip() for field_id in (field_ids or []) if str(field_id).strip()]
+        if normalized_field_ids:
+            params["filter"] = "primary_topic.field.id:" + "|".join(normalized_field_ids)
         if self.api_key:
             params["api_key"] = self.api_key
         if self.email:

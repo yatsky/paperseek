@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field, field_validator
 from paperseek.client import ApiException
 from paperseek.config import AgentConfig, default_api_type, default_base_url, default_model
 from paperseek.diagnostics import run_doctor, smoke_source
+from paperseek.disciplines import list_discipline_fields, normalize_discipline_ids
 from paperseek.env_loader import load_env_file
 from paperseek.history import HistoryStore, result_payload_from_search_result, safe_search_params_from_config
 from paperseek.llm_client import LLMError, create_llm_client
@@ -40,6 +41,7 @@ FIELD_LABELS = {
     "crossref_email": "Crossref Email",
     "llm_api_key": "LLM API Key",
     "llm_api_type": "LLM API Type",
+    "discipline_fields": "Discipline Fields",
     "expand_citations": "Expand Citations",
     "target_min": "Min Results",
     "target_max": "Max Results",
@@ -61,6 +63,7 @@ class SearchRequest(BaseModel):
     llm_base_url: Optional[str] = None
     wos_db: str = "WOS"
     search_field: Optional[str] = ""
+    discipline_fields: list[str] = Field(default_factory=list)
     client_timezone: Optional[str] = ""
     client_utc_offset_minutes: Optional[int] = None
     fetch_abstracts: bool = False
@@ -95,6 +98,11 @@ class SearchRequest(BaseModel):
             raise ValueError(f"must be one of {', '.join(supported_source_ids())}")
         return value
 
+    @field_validator("discipline_fields", mode="before")
+    @classmethod
+    def clean_discipline_fields(cls, value) -> list[str]:
+        return list(normalize_discipline_ids(value))
+
 
 class DiagnosticRequest(BaseModel):
     question: Optional[str] = "machine learning"
@@ -110,6 +118,7 @@ class DiagnosticRequest(BaseModel):
     llm_base_url: Optional[str] = None
     wos_db: str = "WOS"
     search_field: Optional[str] = ""
+    discipline_fields: list[str] = Field(default_factory=list)
     client_timezone: Optional[str] = ""
     client_utc_offset_minutes: Optional[int] = None
     fetch_abstracts: bool = False
@@ -135,6 +144,11 @@ class DiagnosticRequest(BaseModel):
         if value not in supported_source_ids():
             raise ValueError(f"must be one of {', '.join(supported_source_ids())}")
         return value
+
+    @field_validator("discipline_fields", mode="before")
+    @classmethod
+    def clean_discipline_fields(cls, value) -> list[str]:
+        return list(normalize_discipline_ids(value))
 
 
 @app.exception_handler(RequestValidationError)
@@ -216,6 +230,11 @@ def sources():
     return {"sources": list_source_metadata()}
 
 
+@app.get("/api/disciplines")
+def disciplines():
+    return {"disciplines": list_discipline_fields()}
+
+
 @app.get("/api/config/defaults")
 def config_defaults():
     config = AgentConfig.from_env()
@@ -228,6 +247,7 @@ def config_defaults():
         "target_min": config.target_min,
         "target_max": config.target_max,
         "max_iterations": config.max_iterations,
+        "discipline_fields": list(getattr(config, "discipline_fields", ()) or []),
         "expand_citations": config.expand_citations,
         "fetch_abstracts": config.fetch_abstracts,
         "has_wos_api_key": bool(config.wos_api_key),
@@ -272,6 +292,7 @@ def _config_from_payload(payload: SearchRequest) -> AgentConfig:
         config.llm_base_url = default_base_url(config.llm_provider, config.llm_api_type)
     config.wos_db = payload.wos_db or config.wos_db or "WOS"
     config.search_field = payload.search_field or config.search_field or ""
+    config.discipline_fields = normalize_discipline_ids(payload.discipline_fields)
     config.fetch_abstracts = payload.fetch_abstracts
     config.expand_citations = payload.expand_citations
     config.target_min = payload.target_min

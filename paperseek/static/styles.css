@@ -370,6 +370,117 @@ select.is-invalid {
   box-shadow: 0 0 0 3px rgba(198, 61, 50, 0.14);
 }
 
+.discipline-picker {
+  margin-top: 10px;
+}
+
+.discipline-picker summary {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  color: var(--ink);
+  background: #fbfbfa;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.discipline-picker summary::-webkit-details-marker {
+  display: none;
+}
+
+.discipline-picker summary span {
+  font-size: 12px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.discipline-picker summary small {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.discipline-picker[open] summary {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(77, 143, 215, 0.16);
+}
+
+.discipline-menu {
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px;
+  background: #ffffff;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.discipline-options {
+  max-height: 260px;
+  overflow: auto;
+  display: grid;
+  gap: 8px;
+  padding-right: 3px;
+}
+
+.discipline-domain {
+  display: grid;
+  gap: 5px;
+}
+
+.discipline-domain-title {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.discipline-option {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: #fbfbfa;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.discipline-option input {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+
+.discipline-option span {
+  min-width: 0;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.empty-mini {
+  padding: 12px;
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+.discipline-menu .utility-button {
+  width: 100%;
+  margin-top: 10px;
+}
+
 .primary-button {
   width: 100%;
   height: 48px;

@@ -35,6 +35,7 @@ from paperseek.config_store import (
     unset_config_value,
 )
 from paperseek.diagnostics import dumps, render_doctor_text, render_smoke_text, run_doctor, smoke_source
+from paperseek.disciplines import normalize_discipline_ids
 from paperseek.env_loader import load_env_file
 from paperseek.formatter import format_json, format_text
 from paperseek.history import (
@@ -132,6 +133,7 @@ Environment variables:
   LLM_MODEL          Model name
   LLM_BASE_URL       Custom API endpoint URL
   SEARCH_FIELD       Default discipline/field constraint
+  DISCIPLINE_FIELDS  OpenAlex Field IDs or labels for source-specific discipline limits
   EXPAND_CITATIONS   Set to "false" to skip OpenAlex citation expansion
   FETCH_ABSTRACTS    Set to "true" to enable DOI-based abstract fetching
   PAPERSEEK_TIMEZONE History timestamp timezone, default: Asia/Shanghai
@@ -142,8 +144,16 @@ Environment variables:
     parser.add_argument("question", help="Research question in natural language")
     parser.add_argument("--source", default=None, choices=list(supported_source_ids()), help="Literature data source (default: openalex)")
     parser.add_argument("--field", "-f", default=None, help="Discipline or subject area constraint")
+    parser.add_argument(
+        "--discipline",
+        "--discipline-field",
+        dest="discipline_fields",
+        action="append",
+        default=None,
+        help="OpenAlex Field ID or label for source-specific discipline limiting; repeat for multiple fields",
+    )
     parser.add_argument("--db", "-d", default=None, help="WoS database (WOS, MEDLINE, BIOABS, etc.)")
-    parser.add_argument("--fetch-abstracts", action="store_true", default=None, help="Fetch abstracts via DOI from Crossref/Semantic Scholar")
+    parser.add_argument("--fetch-abstracts", action="store_true", default=None, help="Fetch abstracts via DOI from Crossref when available")
     parser.add_argument("--no-expand-citations", action="store_true", default=False, help="Disable OpenAlex citation-neighbor expansion")
     parser.add_argument("--llm-provider", default=None, choices=list(SUPPORTED_LLM_PROVIDERS), help="LLM service provider")
     parser.add_argument("--llm-api-type", default=None, choices=list(SUPPORTED_LLM_API_TYPES), help="LLM API protocol")
@@ -194,6 +204,8 @@ def _apply_search_args(config: AgentConfig, args) -> AgentConfig:
         config.wos_db = args.db
     if args.field:
         config.search_field = args.field
+    if getattr(args, "discipline_fields", None):
+        config.discipline_fields = normalize_discipline_ids(args.discipline_fields)
     if args.fetch_abstracts is not None and args.fetch_abstracts:
         config.fetch_abstracts = True
     if args.no_expand_citations:
@@ -277,6 +289,7 @@ def _run_search(argv, prog: str):
 def _doctor_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="paperseek doctor", description="Check PaperSeek configuration without making live source requests")
     parser.add_argument("--source", choices=list(supported_source_ids()), default=None, help="Override DATA_SOURCE for diagnostics")
+    parser.add_argument("--discipline", "--discipline-field", dest="discipline_fields", action="append", default=None, help="OpenAlex Field ID or label for source-specific discipline limiting")
     parser.add_argument("--json", action="store_true", help="Print JSON")
     return parser
 
@@ -286,6 +299,8 @@ def _run_doctor(argv):
     config = AgentConfig.from_env()
     if args.source:
         config.data_source = args.source
+    if args.discipline_fields:
+        config.discipline_fields = normalize_discipline_ids(args.discipline_fields)
     result = run_doctor(config)
     print(dumps(result) if args.json else render_doctor_text(result))
     if not result.get("ok"):
@@ -296,6 +311,7 @@ def _smoke_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="paperseek smoke", description="Run a minimal live request against one literature source")
     parser.add_argument("--source", choices=list(supported_source_ids()), default=None, help="Source to check")
     parser.add_argument("--query", default="machine learning", help="Small smoke-test query")
+    parser.add_argument("--discipline", "--discipline-field", dest="discipline_fields", action="append", default=None, help="OpenAlex Field ID or label for source-specific discipline limiting")
     parser.add_argument("--limit", type=int, default=1, help="Number of records to request, max 5")
     parser.add_argument("--json", action="store_true", help="Print JSON")
     return parser
@@ -306,6 +322,8 @@ def _run_smoke(argv):
     config = AgentConfig.from_env()
     if args.source:
         config.data_source = args.source
+    if args.discipline_fields:
+        config.discipline_fields = normalize_discipline_ids(args.discipline_fields)
     result = smoke_source(config, query=args.query, limit=args.limit)
     print(dumps(result) if args.json else render_smoke_text(result))
     if not result.get("ok"):

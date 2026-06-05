@@ -24,6 +24,7 @@ class HistoryStoreTest(unittest.TestCase):
                 llm_api_type="openai_responses",
                 llm_model="gpt-5.4-mini",
                 llm_base_url="https://api.openai.com/v1",
+                discipline_fields=("17", "14"),
             )
             run_id = store.create_run("open innovation", safe_search_params_from_config(config))
             store.record_event(run_id, {"type": "log", "message": "Started", "api_key": "event-secret"})
@@ -70,6 +71,7 @@ class HistoryStoreTest(unittest.TestCase):
             self.assertEqual(detail["ranked"][0]["title"], "Open Innovation")
             self.assertEqual(detail["ranked"][0]["keywords"], "open innovation; platforms")
             self.assertTrue(detail["params"]["has_llm_api_key"])
+            self.assertEqual(detail["params"]["discipline_fields"], ["17", "14"])
             serialized = json.dumps(detail, ensure_ascii=False)
             self.assertNotIn("llm-secret", serialized)
             self.assertNotIn("oa-secret", serialized)

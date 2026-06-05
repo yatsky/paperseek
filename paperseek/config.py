@@ -1,6 +1,7 @@
 import os
 from dataclasses import dataclass, field
 
+from paperseek.disciplines import normalize_discipline_ids
 from paperseek.source_metadata import supported_source_ids
 
 
@@ -18,6 +19,7 @@ class AgentConfig:
     llm_base_url: str = ""
     wos_db: str = "WOS"
     search_field: str = ""
+    discipline_fields: tuple[str, ...] = field(default_factory=tuple)
     fetch_abstracts: bool = False
     expand_citations: bool = True
     citation_seed_count: int = 3
@@ -44,6 +46,7 @@ class AgentConfig:
             llm_base_url=os.environ.get("LLM_BASE_URL", default_base_url(provider, api_type)),
             wos_db=os.environ.get("WOS_DB", "WOS"),
             search_field=os.environ.get("SEARCH_FIELD", ""),
+            discipline_fields=normalize_discipline_ids(os.environ.get("DISCIPLINE_FIELDS", "")),
             fetch_abstracts=os.environ.get("FETCH_ABSTRACTS", "").lower() in ("1", "true", "yes"),
             expand_citations=os.environ.get("EXPAND_CITATIONS", "true").lower() not in ("0", "false", "no"),
             citation_seed_count=int(os.environ.get("CITATION_SEED_COUNT", "3")),
@@ -59,6 +62,7 @@ class AgentConfig:
         self.data_source = (self.data_source or "openalex").lower()
         if self.data_source not in supported_source_ids():
             raise ValueError(f"DATA_SOURCE must be one of {', '.join(supported_source_ids())}, got '{self.data_source}'")
+        self.discipline_fields = normalize_discipline_ids(self.discipline_fields)
         if self.data_source == "wos" and not self.wos_api_key:
             missing.append("WOS_API_KEY")
         self.llm_provider = (self.llm_provider or "openai").lower()

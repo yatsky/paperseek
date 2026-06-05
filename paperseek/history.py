@@ -163,6 +163,7 @@ def safe_search_params_from_config(config: AgentConfig) -> dict[str, Any]:
         "llm_base_url": config.llm_base_url,
         "wos_db": config.wos_db,
         "search_field": config.search_field,
+        "discipline_fields": list(getattr(config, "discipline_fields", ()) or []),
         "fetch_abstracts": config.fetch_abstracts,
         "expand_citations": config.expand_citations,
         "citation_seed_count": config.citation_seed_count,

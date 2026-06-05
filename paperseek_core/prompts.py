@@ -15,7 +15,7 @@ Rules:
 - Do not use exact quoted multi-word phrases unless unavoidable; prefer (term1 AND term2) with wildcards where useful
 - Prefer TS= for broad topic searches; combine with AND for precision
 - For year ranges: PY=2020-2024
-- If a discipline/field is specified, incorporate it via SO= or relevant TS= keywords
+- If a discipline limit is specified, preserve the supplied WC= Web of Science Category limiter
 
 Output ONLY the raw query string. No explanation, no markdown, no code blocks."""
 
@@ -56,6 +56,7 @@ Rules:
 - Use parentheses for synonym groups when helpful.
 - Do not include API parameters such as search=, filter=, per-page=, sort=, or fields=.
 - Do not include Web of Science tags such as TS=, TI=, PY=, SO=, or DT=.
+- If a discipline limit is specified, keep terms consistent with it but do not output filter= parameters.
 - If the user writes in another language, translate the search concepts to standard English academic terms.
 
 Output ONLY the OpenAlex search query string. No explanation, no markdown, no code blocks."""
@@ -91,6 +92,7 @@ Rules:
 - Prefer the core topic terms, theory names, method names, and author-known phrases if present.
 - Do not use field tags, API parameters, Boolean-heavy syntax, or Web of Science query language.
 - If the user writes in another language, translate the search concepts to standard English academic terms.
+- If a discipline limit is specified, include it only as plain bibliographic context.
 - Keep it short enough for metadata search, usually 3-10 words.
 
 Output ONLY the Crossref bibliographic query string. No explanation, no markdown, no code blocks."""

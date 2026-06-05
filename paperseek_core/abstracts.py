@@ -3,7 +3,7 @@ import requests
 
 
 class AbstractFetcher:
-    """Fetch abstracts by DOI from open APIs, with in-memory caching."""
+    """Fetch abstracts by DOI from Crossref, with in-memory caching."""
 
     def __init__(self):
         self._cache: Dict[str, Optional[str]] = {}
@@ -15,9 +15,6 @@ class AbstractFetcher:
             return self._cache[doi]
 
         abstract = self._try_crossref(doi)
-        if abstract is None:
-            abstract = self._try_semantic_scholar(doi)
-
         self._cache[doi] = abstract
         return abstract
 
@@ -30,18 +27,6 @@ class AbstractFetcher:
             abstract = msg.get("abstract", "")
             if abstract and abstract.strip() and len(abstract.strip()) > 20:
                 return self._clean_xml(abstract.strip())
-        except Exception:
-            pass
-        return None
-
-    def _try_semantic_scholar(self, doi: str) -> Optional[str]:
-        try:
-            url = f"https://api.semanticscholar.org/graph/v1/paper/DOI:{doi}?fields=abstract"
-            resp = requests.get(url, timeout=10)
-            resp.raise_for_status()
-            abstract = resp.json().get("abstract", "")
-            if abstract and abstract.strip():
-                return abstract.strip()
         except Exception:
             pass
         return None

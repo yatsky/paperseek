@@ -14,6 +14,9 @@ const baseUrlInput = document.getElementById("llmBaseUrl");
 const exportLogButton = document.getElementById("exportLogButton");
 const exportCsvButton = document.getElementById("exportCsvButton");
 const checkConfigButton = document.getElementById("checkConfigButton");
+const disciplineOptionsContainer = document.getElementById("disciplineOptions");
+const disciplineSummary = document.getElementById("disciplineSummary");
+const clearDisciplinesButton = document.getElementById("clearDisciplinesButton");
 const viewTabs = [...document.querySelectorAll(".mode-tabs .tab")];
 const basicSourceName = document.getElementById("basicSourceName");
 const basicSourceMeta = document.getElementById("basicSourceMeta");
@@ -44,6 +47,10 @@ const translations = {
     "Error": "错误",
     "Research Question": "研究问题",
     "Paste a research question, gap paragraph, or plain language search intent.": "粘贴研究问题、研究空白段落，或用自然语言描述检索意图。",
+    "Discipline Fields": "学科领域",
+    "Any field": "不限学科",
+    "Loading discipline fields...": "正在加载学科领域...",
+    "Discipline fields unavailable": "学科领域暂不可用",
     "Run Search": "开始检索",
     "Stop": "停止",
     "Check Config": "检查配置",
@@ -284,6 +291,7 @@ let historyStatus = { enabled: true, path: "" };
 let historyLoading = false;
 let historyError = "";
 let activeSearchController = null;
+let disciplineOptions = [];
 let environmentConfig = {
   has_llm_api_key: false,
   has_wos_api_key: false,
@@ -407,6 +415,7 @@ function setLanguage(language) {
   }
   updateSourceSummary();
   updateCredentialPlaceholders();
+  updateDisciplineSummary();
 }
 
 function initLanguageControls() {
@@ -522,6 +531,109 @@ function updateSourceSummary() {
   }
 }
 
+function selectedDisciplineFields() {
+  if (!disciplineOptionsContainer) {
+    return [];
+  }
+  return [...disciplineOptionsContainer.querySelectorAll("input[type='checkbox']:checked")].map((item) => item.value);
+}
+
+function updateDisciplineSummary() {
+  if (!disciplineSummary) {
+    return;
+  }
+  const selected = selectedDisciplineFields();
+  if (!selected.length) {
+    setTranslatedText(disciplineSummary, "Any field");
+    return;
+  }
+  const labels = selected.map((id) => {
+    const option = disciplineOptions.find((item) => String(item.id) === String(id));
+    return option ? option.label : id;
+  });
+  const text = labels.length > 2 ? `${labels.slice(0, 2).join(", ")} +${labels.length - 2}` : labels.join(", ");
+  disciplineSummary.dataset.i18nText = "";
+  disciplineSummary.textContent = text;
+}
+
+function setSelectedDisciplineFields(values = []) {
+  const selected = new Set((values || []).map((value) => String(value)));
+  if (!disciplineOptionsContainer) {
+    return;
+  }
+  disciplineOptionsContainer.querySelectorAll("input[type='checkbox']").forEach((input) => {
+    input.checked = selected.has(String(input.value));
+  });
+  updateDisciplineSummary();
+}
+
+function renderDisciplineOptions() {
+  if (!disciplineOptionsContainer) {
+    return;
+  }
+  disciplineOptionsContainer.textContent = "";
+  if (!disciplineOptions.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty-mini";
+    setTranslatedText(empty, "Discipline fields unavailable");
+    disciplineOptionsContainer.appendChild(empty);
+    updateDisciplineSummary();
+    return;
+  }
+  const domains = new Map();
+  disciplineOptions.forEach((option) => {
+    const domain = option.domain || "Other";
+    if (!domains.has(domain)) {
+      domains.set(domain, []);
+    }
+    domains.get(domain).push(option);
+  });
+  domains.forEach((options, domain) => {
+    const group = document.createElement("div");
+    group.className = "discipline-domain";
+    const title = document.createElement("div");
+    title.className = "discipline-domain-title";
+    title.textContent = domain;
+    group.appendChild(title);
+    options.forEach((option) => {
+      const label = document.createElement("label");
+      label.className = "discipline-option";
+      label.dataset.noI18n = "true";
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.value = String(option.id);
+      const text = document.createElement("span");
+      text.textContent = option.label;
+      label.append(input, text);
+      group.appendChild(label);
+    });
+    disciplineOptionsContainer.appendChild(group);
+  });
+  updateDisciplineSummary();
+}
+
+async function loadDisciplineOptions() {
+  if (!disciplineOptionsContainer) {
+    return;
+  }
+  const loading = document.createElement("div");
+  loading.className = "empty-mini";
+  setTranslatedText(loading, "Loading discipline fields...");
+  disciplineOptionsContainer.textContent = "";
+  disciplineOptionsContainer.appendChild(loading);
+  try {
+    const response = await fetch("/api/disciplines");
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    const data = await response.json();
+    disciplineOptions = Array.isArray(data.disciplines) ? data.disciplines : [];
+  } catch (_) {
+    disciplineOptions = [];
+  }
+  renderDisciplineOptions();
+}
+
 function envLlmKeyApplies(provider = providerSelect.value) {
   return Boolean(environmentConfig.has_llm_api_key && (!environmentConfig.llm_provider || environmentConfig.llm_provider === provider));
 }
@@ -578,6 +690,9 @@ async function loadServerDefaults() {
     }
     if (Number.isFinite(Number(data.max_iterations))) {
       document.getElementById("maxIterations").value = Number(data.max_iterations);
+    }
+    if (Array.isArray(data.discipline_fields)) {
+      setSelectedDisciplineFields(data.discipline_fields);
     }
     document.getElementById("fetchAbstracts").checked = Boolean(data.fetch_abstracts);
     document.getElementById("expandCitations").checked = Boolean(data.expand_citations);
@@ -1870,6 +1985,7 @@ function buildPayload() {
     llm_base_url: getValue("llmBaseUrl"),
     wos_db: getValue("wosDb") || "WOS",
     search_field: getValue("searchField"),
+    discipline_fields: selectedDisciplineFields(),
     client_timezone: clientTimeZone,
     client_utc_offset_minutes: clientUtcOffsetMinutes(),
     target_min: getNumber("targetMin"),
@@ -2176,6 +2292,16 @@ exportCsvButton.addEventListener("click", () => {
 
 checkConfigButton.addEventListener("click", checkConfiguration);
 
+if (disciplineOptionsContainer) {
+  disciplineOptionsContainer.addEventListener("change", updateDisciplineSummary);
+}
+
+if (clearDisciplinesButton) {
+  clearDisciplinesButton.addEventListener("click", () => {
+    setSelectedDisciplineFields([]);
+  });
+}
+
 dataSourceSelect.addEventListener("change", () => {
   updateSourceFields();
   workflowState = createWorkflowState();
@@ -2248,6 +2374,7 @@ async function initializeApp() {
   }
   updateSourceFields();
   applyProviderDefaults();
+  await loadDisciplineOptions();
   await loadServerDefaults();
   updateSourceSummary();
   updateExportButtons();
