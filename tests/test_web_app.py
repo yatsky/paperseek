@@ -19,6 +19,7 @@ ENV_KEYS = (
     "LLM_API_TYPE",
     "LLM_MODEL",
     "LLM_BASE_URL",
+    "DISCIPLINE_FIELDS",
 )
 
 
@@ -48,6 +49,15 @@ class WebAppTest(unittest.TestCase):
         self.assertEqual([item["id"] for item in payload["sources"]], ["openalex", "crossref", "wos"])
         self.assertTrue(payload["sources"][0]["default"])
         self.assertEqual(payload["sources"][-1]["status"], "temporarily_unavailable")
+        self.assertIn("discipline_fields", payload["sources"][0]["supported_parameters"])
+
+    def test_disciplines_endpoint_returns_openalex_fields(self):
+        response = self.client.get("/api/disciplines")
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(len(payload["disciplines"]), 26)
+        self.assertEqual(payload["disciplines"][6]["id"], "17")
+        self.assertEqual(payload["disciplines"][6]["label"], "Computer Science")
 
     def test_diagnostics_accepts_ollama_without_api_key(self):
         response = self.client.post(
@@ -119,12 +129,14 @@ class WebAppTest(unittest.TestCase):
                 llm_api_type="",
                 llm_model=None,
                 llm_base_url=None,
+                discipline_fields=["Computer Science", "14"],
             )
             config = _config_from_payload(payload)
             self.assertEqual(config.openalex_api_key, "oa-env-test")
             self.assertEqual(config.llm_api_key, "sk-env-test")
             self.assertEqual(config.llm_provider, "deepseek")
             self.assertEqual(config.llm_model, "deepseek-test")
+            self.assertEqual(config.discipline_fields, ("17", "14"))
 
     def test_config_defaults_reports_configured_secrets_without_exposing_values(self):
         with patched_env({

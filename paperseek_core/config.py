@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+
+from paperseek_core.disciplines import normalize_discipline_ids
 
 
 @dataclass
@@ -10,6 +12,7 @@ class SearchConfig:
     target_max: int = 50
     max_iterations: int = 5
     search_field: str = ""
+    discipline_fields: tuple[str, ...] = field(default_factory=tuple)
     expand_citations: bool = True
     fetch_abstracts: bool = False
     citation_seed_count: int = 3
@@ -42,6 +45,7 @@ class RuntimeConfig:
     target_max: int
     max_iterations: int
     search_field: str
+    discipline_fields: tuple[str, ...]
     expand_citations: bool
     fetch_abstracts: bool
     citation_seed_count: int
@@ -73,6 +77,7 @@ def build_runtime_config(
         target_max=search.target_max,
         max_iterations=search.max_iterations,
         search_field=search.search_field,
+        discipline_fields=normalize_discipline_ids(search.discipline_fields),
         expand_citations=search.expand_citations,
         fetch_abstracts=search.fetch_abstracts,
         citation_seed_count=search.citation_seed_count,

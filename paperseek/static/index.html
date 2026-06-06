@@ -42,6 +42,16 @@
           <section class="query-section">
             <div class="section-kicker">Research Question</div>
             <textarea id="question" name="question" rows="3" spellcheck="true" required placeholder="Paste a research question, gap paragraph, or plain language search intent."></textarea>
+            <details id="disciplinePicker" class="discipline-picker">
+              <summary>
+                <span>Discipline Fields</span>
+                <small id="disciplineSummary">Any field</small>
+              </summary>
+              <div class="discipline-menu">
+                <div id="disciplineOptions" class="discipline-options" aria-label="Discipline Fields"></div>
+                <button id="clearDisciplinesButton" class="utility-button" type="button">Clear</button>
+              </div>
+            </details>
             <div class="query-actions">
               <button id="searchButton" class="primary-button" type="submit">
                 <span>Run Search</span>

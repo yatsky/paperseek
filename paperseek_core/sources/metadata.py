@@ -41,6 +41,7 @@ SOURCE_METADATA: Dict[str, SourceMetadata] = {
             "openalex_api_key",
             "openalex_email",
             "search_field",
+            "discipline_fields",
             "target_min",
             "target_max",
             "max_iterations",
@@ -65,6 +66,7 @@ SOURCE_METADATA: Dict[str, SourceMetadata] = {
         supported_parameters=[
             "crossref_email",
             "search_field",
+            "discipline_fields",
             "target_min",
             "target_max",
             "max_iterations",
@@ -89,6 +91,7 @@ SOURCE_METADATA: Dict[str, SourceMetadata] = {
             "wos_api_key",
             "wos_db",
             "search_field",
+            "discipline_fields",
             "target_min",
             "target_max",
             "max_iterations",

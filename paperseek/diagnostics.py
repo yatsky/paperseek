@@ -8,6 +8,7 @@ from urllib.parse import urlparse
 
 from paperseek.client import ApiClient, ApiException, Configuration, DocumentsApi
 from paperseek.config import SUPPORTED_LLM_API_TYPES, SUPPORTED_LLM_PROVIDERS, AgentConfig, default_api_type
+from paperseek.disciplines import apply_wos_discipline_filter, discipline_summary, openalex_field_ids
 from paperseek.providers import CrossrefProvider, OpenAlexProvider, ProviderError
 from paperseek.source_metadata import get_source_metadata, list_source_metadata, require_source_metadata
 
@@ -93,6 +94,15 @@ def run_doctor(config: AgentConfig) -> Dict[str, Any]:
             status="pass",
             severity="info",
             summary="Source-specific required configuration is present or not required.",
+        ))
+
+    selected_disciplines = discipline_summary(getattr(config, "discipline_fields", ()))
+    if selected_disciplines:
+        checks.append(DiagnosticCheck(
+            id="source.discipline_fields",
+            status="pass",
+            severity="info",
+            summary=f"Discipline limit is configured: {selected_disciplines}.",
         ))
 
     if provider not in SUPPORTED_LLM_PROVIDERS:
@@ -192,7 +202,11 @@ def smoke_source(config: AgentConfig, query: str = "machine learning", limit: in
     started = time.perf_counter()
     try:
         if source == "openalex":
-            result = OpenAlexProvider(config.openalex_api_key, config.openalex_email).search(query, limit=limit)
+            result = OpenAlexProvider(config.openalex_api_key, config.openalex_email).search(
+                query,
+                limit=limit,
+                field_ids=openalex_field_ids(getattr(config, "discipline_fields", ())),
+            )
         elif source == "crossref":
             result = CrossrefProvider(config.crossref_email).search(query, limit=limit)
         else:
@@ -205,6 +219,7 @@ def smoke_source(config: AgentConfig, query: str = "machine learning", limit: in
                     "elapsed_ms": int((time.perf_counter() - started) * 1000),
                 }
             wos_query = query if any(tag in query.upper() for tag in ("TS=", "TI=", "AU=")) else f"TS=({query})"
+            wos_query = apply_wos_discipline_filter(wos_query, getattr(config, "discipline_fields", ()))
             api = DocumentsApi(ApiClient(configuration=Configuration(api_key={"ClarivateApiKeyAuth": config.wos_api_key})))
             result = api.documents_get(q=wos_query, db=config.wos_db, limit=limit)
         hits = getattr(result, "hits", []) or []
@@ -213,7 +228,8 @@ def smoke_source(config: AgentConfig, query: str = "machine learning", limit: in
             "ok": True,
             "source": source,
             "status": "pass",
-            "query": query,
+            "query": wos_query if source == "wos" else query,
+            "discipline_fields": list(getattr(config, "discipline_fields", ()) or []),
             "total": getattr(metadata, "total", 0) if metadata else 0,
             "returned": len(hits),
             "elapsed_ms": int((time.perf_counter() - started) * 1000),

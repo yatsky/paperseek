@@ -19,6 +19,14 @@ from paperseek_core.prompts import (
     SYSTEM_RESULT_RANKING,
 )
 from paperseek_core.abstracts import AbstractFetcher
+from paperseek_core.disciplines import (
+    apply_wos_discipline_filter,
+    discipline_prompt_context,
+    discipline_source_note,
+    discipline_summary,
+    normalize_discipline_ids,
+    openalex_field_ids,
+)
 from paperseek_core.sources.providers import CrossrefProvider, OpenAlexProvider, ProviderError
 
 
@@ -172,6 +180,11 @@ class PaperSeekAgent:
         self.llm = llm_client
         self.abstract_fetcher = abstract_fetcher or AbstractFetcher()
         self.data_source = (getattr(config, "data_source", "wos") or "wos").lower()
+        self.discipline_fields = normalize_discipline_ids(getattr(config, "discipline_fields", ()))
+        try:
+            self.config.discipline_fields = self.discipline_fields
+        except Exception:
+            pass
         self.event_handler: Optional[Callable[[dict], None]] = None
         self.citation_map: dict = self._empty_citation_map(enabled=getattr(config, "expand_citations", True))
 
@@ -197,7 +210,7 @@ class PaperSeekAgent:
             self.event_handler = None
 
     def _search(self, question: str, verbose: bool = False) -> dict:
-        query = self._generate_query(question)
+        query = self._apply_discipline_filter(self._generate_query(question))
         history = []
         iteration = 0
         total = 0
@@ -260,7 +273,7 @@ class PaperSeekAgent:
             except ApiException as e:
                 if e.status == 400 and "query" in str(e.body).lower():
                     current_query = query
-                    query = self._broaden_query(question, query)
+                    query = self._apply_discipline_filter(self._broaden_query(question, query))
                     row = {
                         "iteration": iteration,
                         "query": current_query,
@@ -284,7 +297,7 @@ class PaperSeekAgent:
 
             if total == 0 and iteration < self.config.max_iterations:
                 current_query = query
-                query = self._broaden_query(question, query)
+                query = self._apply_discipline_filter(self._broaden_query(question, query))
                 row = {
                     "iteration": iteration,
                     "query": current_query,
@@ -298,7 +311,7 @@ class PaperSeekAgent:
                 continue
             elif total < self.config.target_min and iteration < self.config.max_iterations:
                 current_query = query
-                query = self._broaden_query(question, query)
+                query = self._apply_discipline_filter(self._broaden_query(question, query))
                 row = {
                     "iteration": iteration,
                     "query": current_query,
@@ -312,7 +325,7 @@ class PaperSeekAgent:
                 continue
             elif total > self.config.target_max and iteration < self.config.max_iterations:
                 current_query = query
-                query = self._narrow_query(question, query)
+                query = self._apply_discipline_filter(self._narrow_query(question, query))
                 row = {
                     "iteration": iteration,
                     "query": current_query,
@@ -378,7 +391,7 @@ class PaperSeekAgent:
             "final_query": query,
             "db": self.config.wos_db if self.data_source == "wos" else self.data_source.upper(),
             "source": self.data_source,
-            "field": self.config.search_field,
+            "field": self._field_summary(),
             "total": total,
             "iterations": iteration,
             "history": history,
@@ -387,13 +400,32 @@ class PaperSeekAgent:
         }
 
     def _provider_search(self, query: str):
-        if self.data_source in ("openalex", "crossref"):
+        if self.data_source == "openalex":
+            return self.provider.search(query=query, limit=self._candidate_limit(), field_ids=openalex_field_ids(self.discipline_fields))
+        if self.data_source == "crossref":
             return self.provider.search(query=query, limit=self._candidate_limit())
         return self.documents_api.documents_get(
             q=query,
             db=self.config.wos_db,
             limit=self._candidate_limit(),
         )
+
+    def _apply_discipline_filter(self, query: str) -> str:
+        if self.data_source == "wos":
+            return apply_wos_discipline_filter(query, self.discipline_fields)
+        return query
+
+    def _discipline_context(self) -> str:
+        return discipline_prompt_context(self.discipline_fields, self.data_source)
+
+    def _field_summary(self) -> str:
+        parts = []
+        selected = discipline_summary(self.discipline_fields)
+        if selected:
+            parts.append(selected)
+        if getattr(self.config, "search_field", ""):
+            parts.append(str(self.config.search_field))
+        return "; ".join(parts)
 
     def _candidate_limit(self) -> int:
         output_limit = max(1, min(int(self.config.target_max or 50), 50))
@@ -442,6 +474,7 @@ class PaperSeekAgent:
                 seeds,
                 per_seed=getattr(self.config, "citation_per_seed", 4),
                 max_records=getattr(self.config, "citation_max_records", 40),
+                field_ids=openalex_field_ids(self.discipline_fields),
             )
         except ProviderError as exc:
             self._emit_log(f"Citation expansion skipped after OpenAlex error: {exc}")
@@ -545,13 +578,15 @@ class PaperSeekAgent:
         return labels.get(self.data_source, self.data_source)
 
     def _source_request_label(self, query: str) -> str:
+        discipline_note = discipline_source_note(self.discipline_fields, self.data_source)
+        suffix = f" ({discipline_note})" if discipline_note else ""
         if self.data_source == "wos":
-            return f"GET /documents db={self.config.wos_db} q={query}"
+            return f"GET /documents db={self.config.wos_db} q={query}{suffix}"
         if self.data_source == "openalex":
-            return f"GET /works search={query}"
+            return f"GET /works search={query}{suffix}"
         if self.data_source == "crossref":
-            return f"GET /works query.bibliographic={query}"
-        return query
+            return f"GET /works query.bibliographic={query}{suffix}"
+        return f"{query}{suffix}"
 
     def _source_response_log(self, result) -> str:
         total = result.metadata.total if result.metadata else 0
@@ -618,6 +653,7 @@ class PaperSeekAgent:
         field_hint = ""
         if self.config.search_field:
             field_hint = f"\nDiscipline/field constraint: {self.config.search_field}\nIncorporate this into the query via relevant SO= journals or TS= field-specific keywords."
+        field_hint += self._discipline_context()
 
         messages = [
             {"role": "system", "content": SYSTEM_QUERY_GENERATION},
@@ -637,6 +673,7 @@ class PaperSeekAgent:
                 {"role": "system", "content": SYSTEM_OPENALEX_QUERY_BROADEN},
                 {"role": "user", "content": (
                     f"Question: {question}\n"
+                    f"{self._discipline_context()}\n"
                     f"Current query returned too few results: {current_query}\n"
                     f"Output ONLY the broadened OpenAlex search query string."
                 )},
@@ -652,6 +689,7 @@ class PaperSeekAgent:
                 {"role": "system", "content": SYSTEM_CROSSREF_QUERY_BROADEN},
                 {"role": "user", "content": (
                     f"Question: {question}\n"
+                    f"{self._discipline_context()}\n"
                     f"Current query returned too few results: {current_query}\n"
                     f"Output ONLY the broadened Crossref bibliographic query string."
                 )},
@@ -667,6 +705,7 @@ class PaperSeekAgent:
             {"role": "system", "content": SYSTEM_QUERY_BROADEN},
             {"role": "user", "content": (
                 f"Question: {question}\n"
+                f"{self._discipline_context()}\n"
                 f"Current query returned 0 results: {current_query}\n"
                 f"Output ONLY the broadened WoS query string."
             )},
@@ -684,6 +723,7 @@ class PaperSeekAgent:
                 {"role": "system", "content": SYSTEM_OPENALEX_QUERY_NARROW},
                 {"role": "user", "content": (
                     f"Question: {question}\n"
+                    f"{self._discipline_context()}\n"
                     f"Current query returned too many results: {current_query}\n"
                     f"Output ONLY the narrowed OpenAlex search query string."
                 )},
@@ -699,6 +739,7 @@ class PaperSeekAgent:
                 {"role": "system", "content": SYSTEM_CROSSREF_QUERY_NARROW},
                 {"role": "user", "content": (
                     f"Question: {question}\n"
+                    f"{self._discipline_context()}\n"
                     f"Current query returned too many results: {current_query}\n"
                     f"Output ONLY the narrowed Crossref bibliographic query string."
                 )},
@@ -713,6 +754,7 @@ class PaperSeekAgent:
         field_hint = ""
         if self.config.search_field:
             field_hint = f" Consider adding SO= for key journals in {self.config.search_field}."
+        field_hint += self._discipline_context()
 
         messages = [
             {"role": "system", "content": SYSTEM_QUERY_NARROW},
@@ -734,6 +776,7 @@ class PaperSeekAgent:
         field_hint = ""
         if self.config.search_field:
             field_hint = f"\nDiscipline/field constraint: {self.config.search_field}\nTranslate this into standard English field or venue/topic terms if useful."
+        field_hint += self._discipline_context()
 
         messages = [
             {"role": "system", "content": SYSTEM_OPENALEX_QUERY_GENERATION},
@@ -751,6 +794,7 @@ class PaperSeekAgent:
         field_hint = ""
         if self.config.search_field:
             field_hint = f"\nDiscipline/field constraint: {self.config.search_field}\nTranslate this into standard English bibliographic terms if useful."
+        field_hint += self._discipline_context()
 
         messages = [
             {"role": "system", "content": SYSTEM_CROSSREF_QUERY_GENERATION},
