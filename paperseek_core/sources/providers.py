@@ -214,12 +214,13 @@ class OpenAlexProvider:
                 "keywords",
                 "concepts",
                 "ids",
+                "primary_topic",
                 "referenced_works",
             ]),
         }
-        normalized_field_ids = [str(field_id).strip() for field_id in (field_ids or []) if str(field_id).strip()]
+        normalized_field_ids = self._normalize_field_ids(field_ids)
         if normalized_field_ids:
-            params["filter"] = "primary_topic.field.id:" + "|".join(normalized_field_ids)
+            params["filter"] = self._field_filter_clause(normalized_field_ids)
         if self.api_key:
             params["api_key"] = self.api_key
         if self.email:
@@ -270,18 +271,21 @@ class OpenAlexProvider:
         seeds: List[PaperRecord],
         per_seed: int = 4,
         max_records: int = 40,
+        field_ids: Optional[Sequence[str]] = None,
     ) -> List[PaperRecord]:
-        return self.citation_neighbors_with_graph(seeds, per_seed=per_seed, max_records=max_records)["records"]
+        return self.citation_neighbors_with_graph(seeds, per_seed=per_seed, max_records=max_records, field_ids=field_ids)["records"]
 
     def citation_neighbors_with_graph(
         self,
         seeds: List[PaperRecord],
         per_seed: int = 4,
         max_records: int = 40,
+        field_ids: Optional[Sequence[str]] = None,
     ) -> Dict[str, Any]:
         """Fetch forward and backward citation neighbors for seed OpenAlex works."""
         per_seed = max(1, min(int(per_seed or 4), 10))
         max_records = max(1, min(int(max_records or 40), 100))
+        normalized_field_ids = self._normalize_field_ids(field_ids)
         output: List[PaperRecord] = []
         nodes: Dict[str, Dict[str, Any]] = {}
         edges: List[Dict[str, str]] = []
@@ -335,7 +339,7 @@ class OpenAlexProvider:
                     break
                 try:
                     record = self._fetch_work(ref_url)
-                    if record:
+                    if record and self._record_matches_field_ids(record, normalized_field_ids):
                         add_node(record, "backward", seed_uid)
                         edges.append({
                             "source": seed_uid,
@@ -343,16 +347,18 @@ class OpenAlexProvider:
                             "type": "references",
                             "seed": seed_uid,
                         })
-                    add_record(record)
+                        add_record(record)
                 except ProviderError:
                     continue
 
             if len(output) >= max_records:
                 break
             try:
-                for record in self._fetch_forward_citations(seed_id, per_seed):
+                for record in self._fetch_forward_citations(seed_id, per_seed, field_ids=normalized_field_ids):
                     if len(output) >= max_records:
                         break
+                    if not self._record_matches_field_ids(record, normalized_field_ids):
+                        continue
                     add_node(record, "forward", seed_uid)
                     edges.append({
                         "source": record.uid,
@@ -365,6 +371,30 @@ class OpenAlexProvider:
                 continue
 
         return {"records": output, "nodes": list(nodes.values()), "edges": edges}
+
+    @classmethod
+    def _normalize_field_ids(cls, field_ids: Optional[Sequence[str]]) -> List[str]:
+        ids: List[str] = []
+        for field_id in field_ids or []:
+            normalized = cls._normalize_openalex_id(str(field_id))
+            if normalized and normalized not in ids:
+                ids.append(normalized)
+        return ids
+
+    @staticmethod
+    def _field_filter_clause(field_ids: Sequence[str]) -> str:
+        ids = [str(field_id).strip() for field_id in (field_ids or []) if str(field_id).strip()]
+        return "primary_topic.field.id:" + "|".join(ids) if ids else ""
+
+    @classmethod
+    def _record_matches_field_ids(cls, record: PaperRecord, field_ids: Sequence[str]) -> bool:
+        if not field_ids:
+            return True
+        raw = record.raw if isinstance(getattr(record, "raw", None), dict) else {}
+        primary_topic = raw.get("primary_topic") or {}
+        field = primary_topic.get("field") or {}
+        work_field_id = cls._normalize_openalex_id(str(field.get("id") or ""))
+        return bool(work_field_id and work_field_id in field_ids)
 
     def _base_params(self) -> Dict[str, str]:
         params: Dict[str, str] = {}
@@ -395,10 +425,14 @@ class OpenAlexProvider:
             raise ProviderError("openalex", "OpenAlex returned a non-JSON citation response.", body=response.text[:1000], query=identifier) from exc
         return self._to_record(work) if isinstance(work, dict) else None
 
-    def _fetch_forward_citations(self, seed_id: str, limit: int) -> List[PaperRecord]:
+    def _fetch_forward_citations(self, seed_id: str, limit: int, field_ids: Optional[Sequence[str]] = None) -> List[PaperRecord]:
         params = self._base_params()
+        filter_parts = [f"cites:{seed_id}"]
+        field_clause = self._field_filter_clause(self._normalize_field_ids(field_ids))
+        if field_clause:
+            filter_parts.append(field_clause)
         params.update({
-            "filter": f"cites:{seed_id}",
+            "filter": ",".join(filter_parts),
             "sort": "cited_by_count:desc",
             "per-page": max(1, min(int(limit or 4), 10)),
             "select": ",".join([
@@ -418,6 +452,7 @@ class OpenAlexProvider:
                 "keywords",
                 "concepts",
                 "ids",
+                "primary_topic",
                 "referenced_works",
             ]),
         })

@@ -474,6 +474,7 @@ class PaperSeekAgent:
                 seeds,
                 per_seed=getattr(self.config, "citation_per_seed", 4),
                 max_records=getattr(self.config, "citation_max_records", 40),
+                field_ids=openalex_field_ids(self.discipline_fields),
             )
         except ProviderError as exc:
             self._emit_log(f"Citation expansion skipped after OpenAlex error: {exc}")

@@ -76,7 +76,20 @@ def _iter_values(values: object) -> Iterable[object]:
     if isinstance(values, str):
         if _alias_key(values) in _ALIASES:
             return (values,)
-        return [part.strip() for part in re.split(r"[|;\n,]+", values) if part.strip()]
+        parsed = []
+        for part in re.split(r"[|;\n]+", values):
+            part = part.strip()
+            if not part:
+                continue
+            if _alias_key(part) in _ALIASES:
+                parsed.append(part)
+                continue
+            comma_parts = [item.strip() for item in part.split(",") if item.strip()]
+            if len(comma_parts) > 1 and all(_alias_key(item) in _ALIASES for item in comma_parts):
+                parsed.extend(comma_parts)
+            else:
+                parsed.append(part)
+        return parsed
     if isinstance(values, Iterable):
         return values
     return (values,)
