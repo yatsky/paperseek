@@ -27,6 +27,8 @@ features:
     details: 输入中文或英文研究问题，由 LLM 生成适合 OpenAlex、Crossref 或 WoS Starter 的检索查询。
   - title: 可观察工作流
     details: 实时查看查询生成、数据源请求、检索式调整、结果排序、引用扩展和系统日志。
+  - title: 学科领域限制
+    details: 可选择一个或多个 Discipline Fields；OpenAlex 使用原生 field filter，WoS 映射到 Web of Science Categories，Crossref 作为查询上下文。
   - title: 中英文界面
     details: Web UI 支持 EN / 中文切换；在线版和开源自托管版使用一致的主要交互结构。
   - title: 引用扩展与图谱
@@ -39,8 +41,8 @@ features:
 
 PaperSeek 的社区文档分为两个主要入口：
 
-- **开源自托管版**：阅读 [开源版完整用户手册](user-manual.md)，适合本地运行、Docker/VPS 部署、配置自己的 LLM Key 和数据源 Key。
-- **在线体验版**：阅读 [在线体验版用户手册](online-demo.md)，适合直接访问 [paperseek.xyz](https://www.paperseek.xyz/) 试用完整 Web UI。在线版支持 ModelScope service 和自带模型 API 两种模式；登录只影响 ModelScope service 与云端历史。
+- **开源自托管版**：阅读 [开源版完整用户手册](user-manual.md)，适合本地运行、Docker/VPS 部署、配置自己的 LLM Key、数据源 Key 和默认 Discipline Fields。
+- **在线体验版**：阅读 [在线体验版用户手册](online-demo.md)，适合直接访问 [paperseek.xyz](https://www.paperseek.xyz/) 试用完整 Web UI。在线版支持 ModelScope service 和自带模型 API 两种模式，并提供与自托管版一致的 Discipline Fields 选择器；登录只影响 ModelScope service 与云端历史。
 
 部署 Docker、Docker Compose 或 Vercel 时，阅读 [部署指南](deployment.md)。
 
