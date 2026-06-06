@@ -25,6 +25,7 @@ PaperSeek turns a research question into an observable search workflow:
 - Normalize metadata such as title, authors, venue, year, DOI, abstract, citation count, keywords, and links.
 - Ask the LLM to score candidate papers for relevance.
 - Optionally expand high-matching OpenAlex records through forward citations and backward references.
+- Optionally constrain searches to one or more Discipline Fields.
 - Review the workflow, ranked results, and citation map in the Web UI, then export selected records as CSV.
 
 PaperSeek is designed for first-pass paper discovery and metadata organization. It does not replace systematic review protocols, full-text access, copyright checks, or expert judgement.
@@ -36,6 +37,7 @@ PaperSeek is designed for first-pass paper discovery and metadata organization. 
 | Natural-language search | Start from a research question instead of hand-writing database syntax. |
 | Iterative query refinement | Automatically adjusts queries to hit a target result range, with 5 iterations by default. |
 | Relevance ranking | Uses an LLM to score candidates and explain each score briefly. |
+| Discipline Fields | Select OpenAlex Field disciplines in the Web UI or CLI; OpenAlex uses native field filters, WoS maps them to WC categories, and Crossref uses them as query context. |
 | OpenAlex citation expansion | Adds references and citing works from high-matching seed papers. |
 | Result export | Select papers in the Results view and export them as CSV. |
 | Citation map | Shows citation direction with arrows; supports drag, zoom, and pan. |
@@ -172,7 +174,7 @@ The Web UI has four main workspaces:
 
 | View | Purpose |
 | --- | --- |
-| Search | Enter the research question, configure data source, LLM, iterations, and target result range; watch workflow stages and system logs. |
+| Search | Enter the research question, choose Discipline Fields, configure data source, LLM, iterations, and target result range; watch workflow stages and system logs. |
 | Results | Review ranked papers, search, filter, sort, select, and export paper CSV. |
 | Citation Map | Explore OpenAlex citation expansion as a directed graph. |
 | History | Review locally saved runs, final queries, ranked records, and run events. |
@@ -207,6 +209,7 @@ Common options:
 paperseek search "your research question" \
   --source openalex \
   --field management \
+  --discipline "Computer Science" \
   --min 5 \
   --max 50 \
   --iterations 5 \
@@ -257,6 +260,15 @@ paperseek config unset LLM_API_KEY
 
 Environment variables override user-level config. `paperseek config list` masks secret values.
 
+Discipline Fields accept OpenAlex Field IDs, labels, or `https://openalex.org/fields/<id>` URLs. Pass multiple fields by repeating `--discipline` / `--discipline-field`, or separate environment values with semicolons:
+
+```bash
+export DISCIPLINE_FIELDS="17;14"
+paperseek search "open innovation and digital platforms" --source openalex
+```
+
+`--field` / `SEARCH_FIELD` is a free-text field hint that mainly guides LLM query generation; `--discipline` / `DISCIPLINE_FIELDS` is a structured discipline constraint. OpenAlex applies `primary_topic.field.id` filtering, WoS Starter maps selections to `WC=` categories, and Crossref uses the selected disciplines as query context because it does not expose the same shared taxonomy.
+
 ## Data Sources
 
 | Source | Default status | API key | Best for | Notes |
@@ -294,7 +306,7 @@ Default models initialize forms and examples. Actual availability depends on pro
 
 A search usually has four stages:
 
-1. **Query Generation**: the LLM creates an initial query from the research question and optional field hint.
+1. **Query Generation**: the LLM creates an initial query from the research question, optional Field Hint, and Discipline Fields.
 2. **Source Search**: PaperSeek requests OpenAlex, Crossref, or WoS Starter and logs HTTP status and hit counts.
 3. **Query Refinement**: if the hit count is too low or too high, the LLM adjusts the query and continues.
 4. **Ranking & Results**: the candidate pool is scored by the LLM, and the top records are returned.
@@ -326,6 +338,8 @@ Graph nodes come from final results and OpenAlex citation expansion records. You
 | `CROSSREF_EMAIL` | Crossref polite pool email. |
 | `WOS_API_KEY` | Clarivate Web of Science Starter API key. |
 | `WOS_DB` | WoS database code, default `WOS`. |
+| `SEARCH_FIELD` | Free-text discipline or field hint. |
+| `DISCIPLINE_FIELDS` | OpenAlex Field IDs, labels, or URLs; use semicolons for multiple values. |
 | `TARGET_MIN` / `TARGET_MAX` | Target result count range. |
 | `MAX_ITERATIONS` | Maximum query refinement iterations. |
 | `EXPAND_CITATIONS` | Enable OpenAlex citation expansion; default `true`. |
