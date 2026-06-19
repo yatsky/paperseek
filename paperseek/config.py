@@ -27,6 +27,8 @@ class AgentConfig:
     citation_seed_count: int = 3
     citation_per_seed: int = 4
     citation_max_records: int = 40
+    ranking_batch_size: int = 8
+    ranking_concurrency: int = 4
     target_min: int = 5
     target_max: int = 50
     max_iterations: int = 5
@@ -54,6 +56,8 @@ class AgentConfig:
             citation_seed_count=int(os.environ.get("CITATION_SEED_COUNT", "3")),
             citation_per_seed=int(os.environ.get("CITATION_PER_SEED", "4")),
             citation_max_records=int(os.environ.get("CITATION_MAX_RECORDS", "40")),
+            ranking_batch_size=int(os.environ.get("RANKING_BATCH_SIZE", "8")),
+            ranking_concurrency=int(os.environ.get("RANKING_CONCURRENCY", "4")),
             target_min=int(os.environ.get("TARGET_MIN", "5")),
             target_max=int(os.environ.get("TARGET_MAX", "50")),
             max_iterations=int(os.environ.get("MAX_ITERATIONS", "5")),

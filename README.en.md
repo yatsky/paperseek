@@ -9,7 +9,7 @@
 
 **LLM based Literature Search Agent.** PaperSeek helps researchers start literature searches in natural language, iteratively refine database queries, expand candidate papers through citation links, rank records, and export a reviewable paper list.
 
-Try it online: [Live Demo](https://www.paperseek.xyz/). The hosted demo supports either the ModelScope service or your own model API. Sign in to use ModelScope API-Inference quota and hosted history, or run with your own API key without signing in. See the [hosted demo guide](docs/online-demo.md) for details.
+Try it online: [Live Demo](https://www.paperseek.xyz/). The hosted edition has three modes: `Quick Start` for signed-in users with a daily free quota provided by PaperSeek, `ModelScope Service` using the signed-in user's ModelScope API-Inference authorization, and `Use your own API` for user-supplied model and source keys. See the [hosted demo guide](docs/online-demo.md) for details.
 
 ![PaperSeek web interface](https://raw.githubusercontent.com/MingfengHong/paperseek/main/docs/assets/paperseek-web.png)
 
@@ -313,6 +313,8 @@ A search usually has four stages:
 
 When OpenAlex citation expansion is enabled, PaperSeek selects high-matching seed papers, adds references and citing works, then ranks the complete candidate pool. The current default maximum output is 50 papers.
 
+Large candidate pools are ranked in concurrent LLM batches. The default batch size is `8` and default concurrency is `4`; above 32 candidates, PaperSeek adapts the batch size to keep the total batch count near the concurrency level. If one ranking batch fails, only that batch falls back to zero-score source order instead of failing the whole search.
+
 ## Citation Map
 
 Citation Map uses arrows for citation direction:
@@ -339,7 +341,7 @@ Graph nodes come from final results and OpenAlex citation expansion records. You
 | `WOS_API_KEY` | Clarivate Web of Science Starter API key. |
 | `WOS_DB` | WoS database code, default `WOS`. |
 | `SEARCH_FIELD` | Free-text discipline or field hint. |
-| `DISCIPLINE_FIELDS` | OpenAlex Field IDs, labels, or URLs; use semicolons for multiple values. |
+| `DISCIPLINE_FIELDS` | OpenAlex Field IDs, labels, or URLs; use semicolons for multiple values and map selections to OpenAlex / WoS discipline filters. |
 | `TARGET_MIN` / `TARGET_MAX` | Target result count range. |
 | `MAX_ITERATIONS` | Maximum query refinement iterations. |
 | `EXPAND_CITATIONS` | Enable OpenAlex citation expansion; default `true`. |
@@ -347,6 +349,9 @@ Graph nodes come from final results and OpenAlex citation expansion records. You
 | `CITATION_SEED_COUNT` | Number of seed papers used for citation expansion. |
 | `CITATION_PER_SEED` | Number of citation neighbors fetched per seed. |
 | `CITATION_MAX_RECORDS` | Candidate cap for citation expansion. |
+| `RANKING_BATCH_SIZE` | LLM ranking batch size, default `8`; large candidate pools adapt the batch size to reduce batch count. |
+| `RANKING_CONCURRENCY` | LLM ranking concurrency, default `4`; one failed batch no longer fails the whole search. |
+| `LLM_TIMEOUT_SECONDS` | Per-request LLM timeout in seconds, default `180`, minimum `30`. |
 | `PAPERSEEK_HISTORY_ENABLED` | Enable local history; default `true`. |
 | `PAPERSEEK_TIMEZONE` | Timezone for local history timestamps; default `Asia/Shanghai`. The Web UI prefers the detected browser timezone. |
 | `PAPERSEEK_DATA_DIR` | Local PaperSeek data directory; default `~/.paperseek`. |

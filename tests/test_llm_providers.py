@@ -48,6 +48,31 @@ class LLMProviderTest(unittest.TestCase):
         self.assertIn("DeepSeek-V4-Flash", app_js)
         self.assertIn("https://uni-api.cstcloud.cn/v1", app_js)
 
+    def test_llm_timeout_is_configurable_and_keeps_safe_minimum(self):
+        import importlib
+        import os
+        import paperseek_core.llm as core_llm
+
+        previous = os.environ.get("LLM_TIMEOUT_SECONDS")
+        try:
+            os.environ.pop("LLM_TIMEOUT_SECONDS", None)
+            reloaded = importlib.reload(core_llm)
+            self.assertEqual(reloaded.DEFAULT_LLM_TIMEOUT_SECONDS, 180)
+
+            os.environ["LLM_TIMEOUT_SECONDS"] = "240"
+            reloaded = importlib.reload(core_llm)
+            self.assertEqual(reloaded.DEFAULT_LLM_TIMEOUT_SECONDS, 240)
+
+            os.environ["LLM_TIMEOUT_SECONDS"] = "10"
+            reloaded = importlib.reload(core_llm)
+            self.assertEqual(reloaded.DEFAULT_LLM_TIMEOUT_SECONDS, 30)
+        finally:
+            if previous is None:
+                os.environ.pop("LLM_TIMEOUT_SECONDS", None)
+            else:
+                os.environ["LLM_TIMEOUT_SECONDS"] = previous
+            importlib.reload(core_llm)
+
 
 if __name__ == "__main__":
     unittest.main()

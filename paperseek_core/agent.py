@@ -1,6 +1,7 @@
 ﻿import re
 import json
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Callable, List, Optional
 
 from paperseek_core.client import Configuration, ApiClient, DocumentsApi
@@ -373,11 +374,20 @@ class PaperSeekAgent:
             if verbose:
                 print(f"[Done] {total} total results after {self.config.max_iterations} iterations.", file=sys.stderr)
 
+        ranking_context = {
+            "source": self.data_source,
+            "total": total,
+            "history": history,
+            "final_query": query,
+            "preview": self._preview_hits(hits),
+        }
+        self._emit_stage("ranking", "processing", candidate_count=len(hits or []), **ranking_context)
         candidates = self._prepare_candidates(question, hits)
-        self._emit_stage("ranking", "processing", candidate_count=len(candidates))
+        if len(candidates) != len(hits or []):
+            self._emit_stage("ranking", "processing", candidate_count=len(candidates), **ranking_context)
         ranked = self._rank_results(question, candidates)[: self.config.target_max]
         self._finalize_citation_map(ranked)
-        self._emit_stage("ranking", "complete", ranked_count=len(ranked))
+        self._emit_stage("ranking", "complete", ranked_count=len(ranked), **ranking_context)
 
         if self.config.fetch_abstracts:
             self._emit_log("External abstract enrichment started.")
@@ -497,7 +507,6 @@ class PaperSeekAgent:
             "edges": citation_data.get("edges", []),
         })
         self._emit_log(f"Citation expansion completed: added {added} citation-neighbor candidates; candidate pool={len(candidates)}.")
-        self._emit_stage("ranking", "processing", candidate_count=len(candidates))
         return candidates
 
     def _empty_citation_map(self, enabled: bool = True, initial_candidates: int = 0, candidate_pool: int = 0) -> dict:
@@ -812,6 +821,85 @@ class PaperSeekAgent:
         if not documents:
             return []
 
+        batch_size = self._ranking_batch_size(len(documents))
+        batches = [documents[index:index + batch_size] for index in range(0, len(documents), batch_size)]
+        if len(batches) <= 1:
+            self._llm_request_log("result_ranking")
+            scores = self._score_ranking_batch(question, documents, self.llm)
+            self._llm_response_log("result_ranking")
+            return self._rank_from_scores(documents, scores)
+
+        workers = min(self._ranking_concurrency(), len(batches))
+        self._emit_log(
+            f"Result ranking started in {len(batches)} batches; "
+            f"candidates={len(documents)}; batch_size={batch_size}; concurrency={workers}."
+        )
+        scores = []
+        with ThreadPoolExecutor(max_workers=workers) as executor:
+            future_to_batch = {
+                executor.submit(self._score_ranking_batch, question, batch, self._new_ranking_llm_client()): (index, batch)
+                for index, batch in enumerate(batches, 1)
+            }
+            for future in as_completed(future_to_batch):
+                index, batch = future_to_batch[future]
+                try:
+                    batch_scores = future.result()
+                except Exception as exc:
+                    self._emit_log(
+                        f"Result ranking batch {index}/{len(batches)} failed; "
+                        f"returning {len(batch)} candidates in source order for this batch: {exc}"
+                    )
+                    batch_scores = []
+                scores.extend(batch_scores)
+                self._emit_log(f"Result ranking batch {index}/{len(batches)} completed; candidates={len(batch)}; scored={len(batch_scores)}.")
+
+        if not scores:
+            self._emit_log("All result ranking batches failed; returning candidates in source order with zero scores.")
+        return self._rank_from_scores(documents, scores)
+
+    def _ranking_batch_size(self, total_documents: int) -> int:
+        configured = getattr(self.config, "ranking_batch_size", 8) or 8
+        try:
+            batch_size = max(1, int(configured))
+        except (TypeError, ValueError):
+            batch_size = 8
+        if total_documents > 32:
+            batch_size = max(batch_size, (total_documents + self._ranking_concurrency() - 1) // self._ranking_concurrency())
+        return min(max(1, batch_size), max(1, total_documents))
+
+    def _ranking_concurrency(self) -> int:
+        configured = getattr(self.config, "ranking_concurrency", 4) or 4
+        try:
+            return max(1, int(configured))
+        except (TypeError, ValueError):
+            return 4
+
+    def _new_ranking_llm_client(self):
+        if hasattr(self.llm, "fork"):
+            return self.llm.fork()
+        client_class = self.llm.__class__
+        api_key = getattr(self.llm, "api_key", None)
+        base_url = getattr(self.llm, "base_url", "")
+        if api_key is None:
+            return self.llm
+        try:
+            if hasattr(self.llm, "models"):
+                return client_class(api_key, list(getattr(self.llm, "models") or []), base_url)
+            model = getattr(self.llm, "model", "")
+            attempts = getattr(self.llm, "attempts", None)
+            if attempts is not None:
+                try:
+                    return client_class(api_key, model=model, base_url=base_url, attempts=attempts)
+                except TypeError:
+                    pass
+            try:
+                return client_class(api_key, model=model, base_url=base_url)
+            except TypeError:
+                return client_class(api_key, model, base_url)
+        except Exception:
+            return self.llm
+
+    def _score_ranking_batch(self, question: str, documents: list, llm_client: LLMClient) -> list:
         descriptions = []
         for i, doc in enumerate(documents, 1):
             descriptions.append(_describe_document(doc, i))
@@ -827,11 +915,10 @@ class PaperSeekAgent:
             )},
         ]
 
-        self._llm_request_log("result_ranking")
-        raw = self.llm.chat(messages, temperature=0.3)
-        self._llm_response_log("result_ranking")
-        scores = self._parse_ranking_response(raw)
+        raw = llm_client.chat(messages, temperature=0.3)
+        return self._parse_ranking_response(raw)
 
+    def _rank_from_scores(self, documents: list, scores: list) -> list:
         uid_to_doc = {doc.uid: doc for doc in documents}
 
         ranked = []

@@ -1,3 +1,5 @@
+import json
+import re
 import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -10,7 +12,7 @@ from paperseek_core.disciplines import (
     openalex_field_filter,
     wos_category_clause,
 )
-from paperseek_core.sources.providers import OpenAlexProvider, PaperIdentifiers, PaperRecord
+from paperseek_core.sources.providers import OpenAlexProvider, PaperIdentifiers, PaperRecord, ProviderSearchResult, SearchMetadata
 
 
 class FakeResponse:
@@ -25,6 +27,27 @@ class FakeResponse:
         return self._payload
 
 
+class BatchRankingLlm:
+    def __init__(self, calls=None, fail_uid=""):
+        self.calls = calls if calls is not None else []
+        self.fail_uid = fail_uid
+        self.last_response_info = {}
+
+    def fork(self):
+        return BatchRankingLlm(self.calls, fail_uid=self.fail_uid)
+
+    def chat(self, messages, temperature=0.3):
+        text = messages[-1]["content"]
+        uids = re.findall(r"UID: ([^\n]+)", text)
+        self.calls.append(tuple(uids))
+        if self.fail_uid and self.fail_uid in uids:
+            raise RuntimeError("simulated batch failure")
+        return json.dumps([
+            {"uid": uid, "score": int(uid.replace("W", "")), "reasoning": "ranked"}
+            for uid in uids
+        ])
+
+
 def openalex_work(work_id, field_id):
     return {
         "id": f"https://openalex.org/{work_id}",
@@ -32,6 +55,11 @@ def openalex_work(work_id, field_id):
         "primary_topic": {"field": {"id": f"https://openalex.org/fields/{field_id}"}},
         "referenced_works": [],
     }
+
+
+def ranking_record(index):
+    uid = f"W{index:02d}"
+    return PaperRecord(uid=uid, title=f"Work {index}", raw={})
 
 
 class DisciplineMappingTest(unittest.TestCase):
@@ -107,6 +135,89 @@ class DisciplineMappingTest(unittest.TestCase):
         agent._prepare_candidates("open innovation", [seed])
 
         self.assertEqual(captured["field_ids"], ("17", "14"))
+
+    def test_agent_ranks_large_candidate_sets_in_parallel_batches(self):
+        calls = []
+        llm = BatchRankingLlm(calls)
+        config = SimpleNamespace(
+            data_source="openalex",
+            discipline_fields=(),
+            expand_citations=False,
+            ranking_batch_size=8,
+            ranking_concurrency=4,
+            openalex_api_key="",
+            openalex_email="",
+        )
+        agent = PaperSeekAgent(config, llm)
+
+        ranked = agent._rank_results("open innovation", [ranking_record(index) for index in range(40)])
+
+        self.assertEqual(len(calls), 4)
+        self.assertEqual(sorted(len(call) for call in calls), [10, 10, 10, 10])
+        self.assertEqual(ranked[0]["document"].uid, "W39")
+        self.assertEqual(ranked[-1]["document"].uid, "W00")
+
+    def test_agent_keeps_results_when_one_parallel_ranking_batch_fails(self):
+        calls = []
+        llm = BatchRankingLlm(calls, fail_uid="W04")
+        config = SimpleNamespace(
+            data_source="openalex",
+            discipline_fields=(),
+            expand_citations=False,
+            ranking_batch_size=4,
+            ranking_concurrency=2,
+            openalex_api_key="",
+            openalex_email="",
+        )
+        agent = PaperSeekAgent(config, llm)
+
+        ranked = agent._rank_results("open innovation", [ranking_record(index) for index in range(12)])
+
+        self.assertEqual(len(ranked), 12)
+        self.assertEqual(len(calls), 3)
+        self.assertEqual(ranked[0]["document"].uid, "W11")
+        failed_batch = {entry["document"].uid: entry for entry in ranked if entry["document"].uid in {"W04", "W05", "W06", "W07"}}
+        self.assertTrue(failed_batch)
+        self.assertTrue(all(entry["score"] == 0 for entry in failed_batch.values()))
+
+    def test_ranking_stage_events_include_search_context(self):
+        class FakeProvider:
+            def search(self, query, limit=50, field_ids=()):
+                return ProviderSearchResult(
+                    metadata=SearchMetadata(total=2, page=1, limit=limit),
+                    hits=[ranking_record(0), ranking_record(1)],
+                )
+
+        config = SimpleNamespace(
+            data_source="openalex",
+            discipline_fields=(),
+            expand_citations=False,
+            ranking_batch_size=8,
+            ranking_concurrency=4,
+            target_min=1,
+            target_max=5,
+            max_iterations=1,
+            fetch_abstracts=False,
+            openalex_api_key="",
+            openalex_email="",
+        )
+        events = []
+        agent = PaperSeekAgent(config, BatchRankingLlm())
+        agent.provider = FakeProvider()
+        agent._generate_query = lambda question: "open innovation"
+        agent.search("open innovation", event_handler=events.append)
+
+        ranking_events = [
+            event for event in events
+            if event.get("type") == "stage" and event.get("stage") == "ranking" and event.get("status") == "processing"
+        ]
+        self.assertEqual(len(ranking_events), 1)
+        payload = ranking_events[0]["data"]
+        self.assertEqual(payload["candidate_count"], 2)
+        self.assertEqual(payload["final_query"], "open innovation")
+        self.assertEqual(payload["total"], 2)
+        self.assertEqual(payload["history"][0]["action"], "accept")
+        self.assertEqual(payload["source"], "openalex")
 
     def test_openalex_citation_expansion_filters_neighbors_by_field(self):
         captured = {}
