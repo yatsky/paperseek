@@ -9,7 +9,7 @@
 
 **LLM based Literature Search Agent.** PaperSeek 是一个面向研究者的文献发现工具，支持用自然语言发起检索、自动迭代查询、扩展候选论文、排序结果并导出可复核的文献列表。
 
-在线体验：[点击体验](https://www.paperseek.xyz/)。在线体验版支持使用 ModelScope 服务或填写自己的模型 API；登录后可使用 ModelScope API-Inference 额度和云端历史，未登录时也可用自己的 API 试跑；详情见 [在线体验版使用说明](docs/online-demo.md)。
+在线体验：[点击体验](https://www.paperseek.xyz/)。在线版提供 `Quick Start`、`ModelScope Service` 和 `Use your own API` 三种模式：登录用户可使用站点提供的每日免费 Quick Start 额度；ModelScope 模式使用登录用户自己的 API-Inference 授权；自带 API 模式可由用户填写自己的模型和数据源 Key。详情见 [在线体验版使用说明](docs/online-demo.md)。
 
 ![PaperSeek web interface](https://raw.githubusercontent.com/MingfengHong/paperseek/main/docs/assets/paperseek-web.png)
 
@@ -313,6 +313,8 @@ PaperSeek 支持两类主流接口协议：OpenAI 风格接口和 Anthropic Mess
 
 如果启用 OpenAlex 引用扩展，PaperSeek 会从高匹配论文中选择 seed paper，加入 seed 的参考文献和被引论文，再对完整候选池统一评分。默认最大输出 50 条。
 
+候选池较大时，LLM 排序会自动分批并发执行。默认批大小为 `8`、并发为 `4`；超过 32 篇候选论文时会自适应放大批大小。单个排序批次失败时只回退该批次，不会使整次检索失败。
+
 ## 引用图
 
 Citation Map 使用箭头表示引用方向：
@@ -339,7 +341,7 @@ A -> B  表示 A 引用了 B
 | `WOS_API_KEY` | Clarivate Web of Science Starter API Key。 |
 | `WOS_DB` | WoS 数据库代码，默认 `WOS`。 |
 | `SEARCH_FIELD` | 自由文本学科或领域提示。 |
-| `DISCIPLINE_FIELDS` | OpenAlex Field ID、标签或 URL；多个值建议用分号分隔。 |
+| `DISCIPLINE_FIELDS` | OpenAlex Field ID、标签或 URL；多个值建议用分号分隔，并会映射到 OpenAlex / WoS 学科限定。 |
 | `TARGET_MIN` / `TARGET_MAX` | 目标结果数量范围。 |
 | `MAX_ITERATIONS` | 最大查询调整轮数。 |
 | `EXPAND_CITATIONS` | 是否启用 OpenAlex 引用扩展，默认 `true`。 |
@@ -347,6 +349,9 @@ A -> B  表示 A 引用了 B
 | `CITATION_SEED_COUNT` | 引用扩展 seed 论文数量。 |
 | `CITATION_PER_SEED` | 每个 seed 抓取的引用邻居数量。 |
 | `CITATION_MAX_RECORDS` | 引用扩展候选上限。 |
+| `RANKING_BATCH_SIZE` | LLM 排序批大小，默认 `8`；候选数较多时会自适应放大以减少批次数。 |
+| `RANKING_CONCURRENCY` | LLM 排序并发数，默认 `4`；单个批次失败不会使整个检索失败。 |
+| `LLM_TIMEOUT_SECONDS` | 单次 LLM 请求超时秒数，默认 `180`，最小 `30`。 |
 | `PAPERSEEK_HISTORY_ENABLED` | 是否启用本地历史记录，默认 `true`。 |
 | `PAPERSEEK_TIMEZONE` | 本地历史记录时间戳时区，默认 `Asia/Shanghai`；Web UI 会优先使用浏览器检测到的时区。 |
 | `PAPERSEEK_DATA_DIR` | 本地数据目录，默认 `~/.paperseek`。 |

@@ -11,7 +11,7 @@ PaperSeek Web UI 常见部署方式有两种：
 https://www.paperseek.xyz/
 ```
 
-在线体验版的两种模型模式、登录权限、ModelScope 额度和历史记录说明见 [在线体验版用户手册](online-demo.md)。
+在线体验版的 Quick Start、ModelScope Service、Use your own API、登录权限、ModelScope 额度和历史记录说明见 [在线体验版用户手册](online-demo.md)。
 
 ## Docker
 
@@ -91,10 +91,15 @@ Docker 镜像接受与 CLI 和 Web UI 后端相同的环境变量：
 | `CROSSREF_EMAIL` | `you@example.org` |
 | `WOS_API_KEY` | `your-wos-key` |
 | `DISCIPLINE_FIELDS` | `17;14` |
+| `RANKING_BATCH_SIZE` | `8` |
+| `RANKING_CONCURRENCY` | `4` |
+| `LLM_TIMEOUT_SECONDS` | `180` |
 
 如果你不想在服务器端配置密钥，用户也可以在 Web UI 中为当前浏览器会话填写 LLM Key 和数据源 Key。PaperSeek 不会保存这些本次会话密钥。
 
-`DISCIPLINE_FIELDS` 用于设置服务器端默认选中的 Discipline Fields。多个 OpenAlex Field ID 或标签建议用分号分隔；用户仍可在 Web UI 中按本次会话修改选择。
+`DISCIPLINE_FIELDS` 用于设置服务器端默认选中的 Discipline Fields。多个 OpenAlex Field ID、标签或 URL 建议用分号分隔，例如 `17;14` 或 `Computer Science;Business, Management and Accounting`；用户仍可在 Web UI 中按本次会话修改选择。
+
+`RANKING_BATCH_SIZE` 和 `RANKING_CONCURRENCY` 控制 LLM 相关性排序阶段的批大小与并发。候选池较大时，PaperSeek 会自适应放大批大小，使批次数接近并发数；单个排序批次失败时，只回退该批次为源顺序零分，不会使整次检索失败。`LLM_TIMEOUT_SECONDS` 控制单次 LLM 请求超时，默认 180 秒，最小 30 秒。
 
 ### 反向代理
 

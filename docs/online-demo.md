@@ -1,6 +1,6 @@
 # PaperSeek 在线体验版使用说明
 
-PaperSeek 在线体验版用于快速试用完整 Web UI，不需要自己部署服务，也不需要准备 OpenAlex Key。页面支持 `EN` / `中文` 语言切换，选择会保存在当前浏览器。
+PaperSeek 在线体验版用于快速试用完整 Web UI，不需要自己部署服务。页面支持 `EN` / `中文` 语言切换，选择会保存在当前浏览器。
 
 在线体验：
 
@@ -8,42 +8,78 @@ PaperSeek 在线体验版用于快速试用完整 Web UI，不需要自己部署
 https://www.paperseek.xyz/
 ```
 
-## 两种使用模式
+在线版与开源自托管版共享主要检索核心，但账户、云端历史、站点内置 Key 和配额管理只属于在线版。
 
-在线体验版的配置区提供两种模型调用方式。
+## 三种使用模式
 
-### Use ModelScope service
+在线版配置区提供三个互斥模式，展开一个栏目时会折叠另外两个栏目。
 
-`Use ModelScope service` 使用 ModelScope API-Inference。这个模式需要点击右上角或配置区中的登录按钮，并使用 ModelScope 账号授权登录。登录后：
+### Quick Start
 
-- PaperSeek 使用登录用户授权的 ModelScope API-Inference token 调用模型。
+`Quick Start` 是注册用户的快速试用模式。用户登录后即可使用，不需要自己填写模型 Key 或 OpenAlex Key。
+
+- 需要登录 PaperSeek 在线账号。
+- 邮箱密码、GitHub 或 ModelScope 登录都可以使用 Quick Start。
+- 默认每日免费额度为 10 次成功检索；只有成功完成的检索计入次数，失败不扣次数。
+- 模型 API 和 OpenAlex Key 由 PaperSeek 服务端环境变量提供，不暴露给浏览器。
+- 管理员可以在后台为特定用户配置更高的每日额度或临时额度。
+- Quick Start 当前使用中国科技云提供的大语言模型接口服务支持。该 API 服务不做 SLA 保证，如遇 `501` 等临时错误，请稍后重试。
+
+### ModelScope Service
+
+`ModelScope Service` 使用登录用户自己的 ModelScope API-Inference 授权调用模型，PaperSeek 仍默认使用站点 OpenAlex key 池。
+
+- 必须通过 ModelScope 登录，或在已登录账号中连接 ModelScope 身份。
+- PaperSeek 使用当前会话中的 ModelScope provider token 发起 API-Inference 请求。
+- 这里的 API-Inference 也就是 ModelScope 文档中的 API Inference 服务。
+- PaperSeek 不会把 ModelScope API-Inference token 保存到数据库。
 - 模型调用消耗登录用户自己的 ModelScope API-Inference 免费额度。
-- PaperSeek 不会把 ModelScope API-Inference token 保存到数据库；token 只随当前登录会话用于发起模型请求。
-- 数据源默认使用站点服务端 OpenAlex key 池，OpenAlex 引用扩展默认开启。
-- `History` 页面会显示当前登录账号的云端历史记录。
+- ModelScope 模型路由默认是 `Automatic`，会在一组已测试的 API-Inference 模型之间自动尝试；也可以选择 `Custom model` 并填写自定义 ModelScope model ID。
+- 使用前请确认 ModelScope 账号已绑定阿里云账号并完成实名认证。API-Inference 可用额度、并发和模型可用性以 ModelScope 实际接口为准。
 
-ModelScope 模型路由默认是 `Automatic`。自动模式会在一组已测试的 API-Inference 模型之间尝试可用模型，不在前端展示具体轮询顺序。也可以选择 `Custom model` 并填写自定义 ModelScope model ID。
+ModelScope OAuth 默认使用 `openid profile api-inference`。不要额外添加 `email` 或未在魔搭 OAuth 应用中启用的 scope，否则可能出现 `invalid_scope`。
 
 ### Use your own API
 
-`Use your own API` 适合已经有模型服务 API Key 的用户。这个模式不要求登录：
+`Use your own API` 适合已有模型服务 API Key 的用户。
 
-- 默认 provider 是 `OpenAI`。
+- 未登录用户也可以使用。
+- 默认 provider 是 `OpenAI`，也可以选择 DeepSeek、中国科技云、ModelScope API-Inference、Ollama 或自定义 OpenAI-compatible 服务。
 - API Key、Base URL、模型和运行参数只用于当前浏览器会话。
-- 如果 provider 选择 `Ollama`，API Key 可留空，用于本地兼容端点。
-- ModelScope API-Inference 也可以作为自带 API 的 provider 使用，但不作为默认选项。
-- PaperSeek 仍默认使用站点 OpenAlex key 池；只有在高级设置中填写自己的 OpenAlex Key 或其它数据源 Key 时才会覆盖。
-- 未登录时不能使用托管服务的云端历史记录。
+- 未登录用户使用 OpenAlex 检索时必须填写自己的 OpenAlex Key；登录用户默认可使用站点 OpenAlex key 池，也可在高级设置中覆盖为自己的 Key。
+- 自带 API 模式不使用 Quick Start 免费额度，也不消耗 ModelScope Service 的 OAuth token。
+- 未登录用户不能使用云端历史记录。
+
+## 账号系统
+
+在线版使用 Supabase Auth 管理账号和云端历史。登录方式包括：
+
+| 登录方式 | 用途 |
+| --- | --- |
+| 邮箱密码 | 默认账号入口，可用于 Quick Start 和云端 History。 |
+| GitHub | 社交登录；如果与已有邮箱账号匹配，会归入同一 Supabase 用户；否则可在账户面板设置密码补充邮箱密码登录。 |
+| ModelScope | 社交登录，同时为 ModelScope Service 提供 API-Inference provider token。 |
+
+账户面板会显示当前账号的一览表，包括邮箱密码账号、GitHub 登录、ModelScope 登录、ModelScope API-Inference 授权和 Quick Start 权限。
+
+几个重要规则：
+
+- 任意登录态都可以使用 Quick Start。
+- 云端 History 只对登录用户可用，并按 Supabase 用户隔离。
+- ModelScope Service 必须有 ModelScope provider token；仅邮箱或 GitHub 登录不能代表用户调用 ModelScope API-Inference。
+- 如果 OAuth 账号没有对应的邮箱密码登录，账户面板会提示设置密码。这个操作是在当前登录用户上添加邮箱密码登录，不是重新创建另一个账号。
+- 公共电脑或共享浏览器使用后请退出登录。
 
 ## 推荐流程
 
 1. 进入 [paperseek.xyz](https://www.paperseek.xyz/)。
 2. 如需中文界面，点击顶部状态条中的 `中文`。
-3. 选择模型模式：
-   - 想使用 ModelScope 免费 API-Inference 额度：选择 `Use ModelScope service` 并登录。
-   - 想使用自己的模型服务：选择 `Use your own API`，填写 API Key。
-4. 输入研究问题。
-5. 如需限定学科范围，打开 `Discipline Fields` 并勾选一个或多个学科；不勾选时表示 `Any field`。
+3. 选择使用模式：
+   - 想最快试用：登录后选择 `Quick Start`。
+   - 想使用自己的 ModelScope API-Inference 免费额度：选择 `ModelScope Service` 并使用 ModelScope 登录。
+   - 想使用自己的模型服务或本地 Ollama：选择 `Use your own API`。
+4. 输入 Research Question。
+5. 可选：在 Research Question 下方选择学科限定。前端使用同一组选项，后端会映射到 OpenAlex Field 或 WoS Category 检索限定。
 6. 保持默认 OpenAlex 数据源，或在配置区切换到 Crossref；自带 API 模式的高级设置中还可配置 Web of Science Starter。
 7. 点击 `Check Config` 检查配置。失败时页面会弹出问题列表，并提示需要修复的字段。
 8. 点击 `Run Search` 开始检索。
@@ -65,23 +101,20 @@ ModelScope 模型路由默认是 `Automatic`。自动模式会在一组已测试
 
 `Discipline Fields` 与高级设置中的 `Field Hint` 不同。`Field Hint` 是自由文本提示，用来帮助 LLM 生成更贴近领域的检索式；`Discipline Fields` 是结构化学科限制，更适合在结果过宽时收窄候选池。
 
-## 账号与权限
+## 权限对照
 
-在线体验版不强制所有用户登录。登录与未登录的主要差异是：
-
-| 功能 | 未登录 | 已登录 ModelScope |
-| --- | --- | --- |
-| 使用自己的模型 API | 支持 | 支持 |
-| 使用站点 OpenAlex key 池 | 支持 | 支持 |
-| 使用 Discipline Fields | 支持 | 支持 |
-| 使用 ModelScope service | 不支持 | 支持，使用登录账号 API-Inference 额度 |
-| 云端 History | 不支持 | 支持，按登录账号隔离 |
+| 功能 | 未登录 | 邮箱/GitHub 登录 | ModelScope 登录或已连接 ModelScope |
+| --- | --- | --- | --- |
+| Use your own API | 支持，需要自填模型 Key；OpenAlex 需自填 Key | 支持，可默认使用站点 OpenAlex key 池 | 支持，可默认使用站点 OpenAlex key 池 |
+| Quick Start | 不支持 | 支持，每日成功检索额度 | 支持，每日成功检索额度 |
+| ModelScope Service | 不支持 | 不支持，除非连接 ModelScope | 支持，使用当前账号 API-Inference 授权 |
+| 云端 History | 不支持 | 支持 | 支持 |
 
 公共电脑或共享浏览器使用后请退出登录。历史记录按登录账号隔离，不按 IP 地址隔离。
 
 ## 使用前检查
 
-使用 `Use ModelScope service` 前，请确认：
+使用 `ModelScope Service` 前，请确认：
 
 - ModelScope 账号已经绑定阿里云账号。
 - 绑定的阿里云账号已完成实名认证。
@@ -97,77 +130,62 @@ ModelScope API-Inference 的官方限制请以文档为准：
 
 ## API-Inference 稳定性与额度
 
-ModelScope API-Inference 不是商业 SLA 服务，而是面向开发者的免费体验能力。它可能受到用户总额度、单模型额度、动态并发限制和平台资源压力影响：
+ModelScope API-Inference 是面向开发者的免费体验能力，不是商业 SLA 服务。它可能受到用户总额度、单模型额度、动态并发限制和平台资源压力影响：
 
-- 每位 ModelScope 注册用户当前每天有一个总调用额度，官方文档示例为所有模型合计每天 2000 次。
-- 每个模型还有独立的单模型每日额度，额度会随资源和使用情况动态调整，最高不超过 200 次，也可能远低于 200 次。
-- 如果某个模型返回空响应、`429` 或额度不足，在线版会尽量通过自动路由尝试其它可用模型；仍失败时可稍后重试，或改用 `Use your own API`。
-- 平台会根据实时资源压力动态调整并发和速率限制，在线体验版更适合单人、低并发、轻量检索。
-- 较早模型可能会逐步降低额度或下架，模型列表和可用额度以 ModelScope 实际页面和接口返回为准。
-
-PaperSeek 会读取 ModelScope 响应头中的额度信息，并在日志里显示用户总额度和当前模型额度的剩余情况。ModelScope 文档列出的相关响应头包括：
-
-| 响应头 | 含义 |
-| --- | --- |
-| `modelscope-ratelimit-requests-limit` | 用户当天总额度 |
-| `modelscope-ratelimit-requests-remaining` | 用户当天剩余额度 |
-| `modelscope-ratelimit-model-requests-limit` | 当前模型当天额度 |
-| `modelscope-ratelimit-model-requests-remaining` | 当前模型当天剩余额度 |
+- 每位 ModelScope 注册用户通常有每日总调用额度。
+- 每个模型还有独立的单模型每日额度，额度会随资源和使用情况动态调整。
+- 如果某个模型返回空响应、`429` 或额度不足，在线版会尽量通过自动路由尝试其它可用模型。
+- 仍失败时可稍后重试，或改用 `Quick Start` / `Use your own API`。
+- PaperSeek 会读取 ModelScope 响应头中的额度信息，并在日志里显示用户总额度和当前模型额度的剩余情况。
 
 ## 历史记录
 
-在线体验版会保存已登录账号的检索历史，包括：
+在线版会为登录用户保存：
 
-- 检索问题和运行配置。
-- 工作流日志。
+- 检索问题和运行配置摘要。
+- 工作流日志事件。
 - 数据源返回的候选论文。
 - 最终排序结果。
 
-历史记录按登录账号隔离。不同浏览器、不同设备或不同网络环境中，只要登录的是同一个账号，就能看到同一账号的历史记录；不同账号之间不会共享历史记录。未登录用户可以运行检索，但不能使用云端历史记录。
+历史记录按登录账号隔离。不同浏览器、设备或网络环境中，只要登录同一个账号，就能看到同一账号的历史记录；不同账号之间不会共享历史记录。历史记录不会保存用户输入的模型 API Key、OpenAlex Key 或 ModelScope provider token。
 
 ## 与开源自托管版的区别
 
 | 项目 | 在线体验版 | 开源自托管版 |
 | --- | --- | --- |
-| 登录 | 使用自己的 API 时不需要登录；ModelScope service 和 History 需要登录 | 默认不需要登录 |
-| 模型调用 | 可使用登录用户的 ModelScope API-Inference 额度，或填写自己的模型 API | 使用你自己配置的 LLM API Key |
-| OpenAlex Key | 默认使用站点服务端 key 池，可在高级设置中覆盖 | 可匿名访问或自己配置 key |
+| 登录 | 使用 Supabase 账号系统；Quick Start 和 History 需要登录 | 默认不需要登录 |
+| 模型调用 | Quick Start 可使用站点免费额度；ModelScope Service 使用用户 OAuth 授权；也可自带 API | 使用你自己配置的 LLM API Key |
+| OpenAlex Key | 登录用户默认使用站点 key 池；未登录自带 API 模式需自填 OpenAlex Key | 可匿名访问或自己配置 key |
 | Discipline Fields | 页面选择，随本次搜索提交 | 页面选择、CLI 参数或 `DISCIPLINE_FIELDS` 环境变量 |
-| 历史记录 | 登录后保存到托管服务数据库 | 默认保存到本地 SQLite |
+| 历史记录 | 登录后保存到云端 Supabase 数据库 | 默认保存到本地 SQLite |
 | 适用场景 | 快速体验、轻量检索、临时试用 | 私有部署、长期使用、可控配置 |
 
 ## 隐私提示
 
-不要在研究问题中输入不应上传到第三方模型服务的敏感内容。在线体验版会把检索问题、候选论文元数据和排序提示发送给所选模型服务，以完成检索式生成和结果排序。
+不要在研究问题中输入不应上传到第三方模型服务的敏感内容。在线版会把检索问题、候选论文元数据和排序提示发送给当前模式选择的模型服务，以完成检索式生成和结果排序。
 
-如果需要长期使用、私有部署、稳定额度或完全控制 API Key 与数据存储，请使用开源自托管版本，并配置自己的模型服务和数据源。
+如果需要长期使用、私有部署、稳定额度或完全控制 API Key 与数据存储，请使用开源自托管版，并配置自己的模型服务和数据源。
 
 ## English
 
-The hosted PaperSeek demo lets you try the full Web UI without deploying your own server or preparing an OpenAlex key. The UI can switch between `EN` and `中文`, and the choice is saved in the current browser.
+The hosted PaperSeek edition lets users try the full Web UI without deploying their own server. It shares the main search core with the open-source edition, while account handling, hosted history, site-provided keys, and quota management belong to the hosted service.
 
-URL:
+Hosted URL:
 
 ```text
 https://www.paperseek.xyz/
 ```
 
-The hosted configuration panel has two model modes:
+The hosted configuration panel has three mutually exclusive modes:
 
-- `Use ModelScope service`: requires ModelScope sign-in. Model calls use the signed-in user's API-Inference quota, OpenAlex uses the hosted site key pool by default, and hosted history is available for the signed-in account. Model routing defaults to `Automatic`, which tries a tested pool of API-Inference models; advanced users can provide a custom ModelScope model ID.
-- `Use your own API`: does not require sign-in. The default provider is OpenAI, and API key, base URL, model, and run settings are used only for the current browser session. The site OpenAlex key pool is still used unless you override source credentials in Advanced settings.
+- `Quick Start`: requires sign-in. PaperSeek provides the model key and OpenAlex key pool. The default quota is 10 successful searches per day, and failed searches do not consume quota. The Quick Start model API is provided through CSTCloud and has no SLA guarantee.
+- `ModelScope Service`: requires ModelScope sign-in or a connected ModelScope identity. Model calls use the signed-in user's ModelScope API-Inference provider token, while OpenAlex uses the hosted key pool by default. Model routing defaults to Automatic with a tested fallback pool.
+- `Use your own API`: can be used without sign-in. Users provide their own model API key and, when anonymous, their own OpenAlex key for OpenAlex searches. Signed-in users may use the hosted OpenAlex key pool unless they override it.
 
-Both modes support the same `Discipline Fields` picker as the open-source Web UI. Leave it at `Any field` for broad discovery, or select one or more OpenAlex Field disciplines to narrow the run. OpenAlex applies native `primary_topic.field.id` filters, WoS Starter maps selections to `WC=` categories, and Crossref uses the selected disciplines as query context.
+All modes support the same `Discipline Fields` picker as the open-source Web UI. Leave it at `Any field` for broad discovery, or select one or more OpenAlex Field disciplines to narrow the run. OpenAlex applies native `primary_topic.field.id` filters, WoS Starter maps selections to `WC=` categories, and Crossref uses the selected disciplines as query context.
 
-Signing in only affects the ModelScope service mode and hosted history. Users who provide their own model API key can run searches without signing in, but they will not have hosted history.
+Accounts are managed through Supabase Auth. Email/password is the default account entry; GitHub and ModelScope are OAuth identities on the same user model. Any signed-in account can use Quick Start and hosted History. ModelScope Service specifically requires a ModelScope provider token in the current session.
 
-Before using API-Inference, make sure the ModelScope account is linked to an Alibaba Cloud account, has completed real-name verification, and has granted the `api-inference` OAuth scope. For RAM accounts, follow the official binding and authorization guide.
+ModelScope OAuth uses `openid profile api-inference` by default. Adding unsupported scopes such as `email` can cause `invalid_scope`.
 
-Official ModelScope references:
-
-- [API Inference usage limits](https://modelscope.cn/docs/model-service/API-Inference/limits)
-- [Alibaba Cloud account binding and authorization](https://modelscope.cn/docs/accounts/aliyun-binding-and-authorization)
-
-ModelScope API-Inference is a free developer-oriented service rather than a production SLA service. It is subject to a daily per-user quota, separate per-model quotas, transient empty responses, and dynamic rate limits. If automatic routing cannot complete a request, retry later or use your own model API.
-
-PaperSeek reads ModelScope quota headers when available and shows remaining user/model quota in the run log. History is isolated by the authenticated account, not by IP address. Sign out after using PaperSeek on a shared computer. For private deployment, long-term use, or full control over API keys and storage, use the open-source self-hosted version instead.
+Hosted history is isolated by authenticated user and does not store raw user model keys, OpenAlex keys, or ModelScope provider tokens. Sign out after using PaperSeek on a shared computer.

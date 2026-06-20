@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List, Dict
+import os
 import requests
 import time
 
@@ -8,7 +9,14 @@ class LLMError(Exception):
     pass
 
 
-DEFAULT_LLM_TIMEOUT_SECONDS = 180
+def _llm_timeout_seconds() -> int:
+    try:
+        return max(30, int(os.environ.get("LLM_TIMEOUT_SECONDS", "180")))
+    except (TypeError, ValueError):
+        return 180
+
+
+DEFAULT_LLM_TIMEOUT_SECONDS = _llm_timeout_seconds()
 
 
 class LLMClient(ABC):
