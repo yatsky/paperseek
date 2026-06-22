@@ -18,7 +18,8 @@ COPY paperseek_core ./paperseek_core
 RUN python -m pip install --upgrade pip \
     && python -m pip install .
 
-USER paperseek
+# lzcinit (LazyCat runtime) replaces ENTRYPOINT and must bind its socket as root
+USER root
 
 EXPOSE 7860
 
